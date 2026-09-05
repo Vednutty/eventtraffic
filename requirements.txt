@@ -1,0 +1,23 @@
+# EventTraffic platform — Python dependencies
+#   install with:  pip install -r requirements.txt
+
+# ── Required ─────────────────────────────────────────────────────────────────
+flask>=3.0            # web server + JSON API
+flask-cors>=4.0       # browser access to the API
+requests>=2.31        # OpenStreetMap (Overpass), weather, live traffic feeds
+
+# ── Needed for the AI features ───────────────────────────────────────────────
+# Auto-research of events and floor-plan vision analysis.
+# Also requires the ANTHROPIC_API_KEY environment variable to be set.
+anthropic>=0.40
+
+# ── Optional ─────────────────────────────────────────────────────────────────
+# Only needed to upload floor plans as PDFs. Image uploads (PNG/JPG) work
+# without it; the app returns a clear message if a PDF is uploaded and this
+# is missing.
+pymupdf>=1.24
+
+# ── For deployment only ──────────────────────────────────────────────────────
+# Never run Flask's debug server for a customer — it allows remote code
+# execution. Serve with:  waitress-serve --port=5000 app:app
+waitress>=3.0
