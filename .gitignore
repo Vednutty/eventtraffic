@@ -1,0 +1,36 @@
+# ── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# ── Secrets ──────────────────────────────────────────────────────────────────
+# ANTHROPIC_API_KEY is read from the environment (never hardcoded) — keep it
+# that way. Anything below would leak it.
+.env
+.env.*
+*.key
+
+# ── OSM road cache (regenerated automatically) ───────────────────────────────
+# 72-hour TTL, so a committed copy goes stale within days and re-fetches anyway.
+# ~1 MB of derived data — not worth versioning.
+roads_cache_*.json
+
+# ── Scratch / audit output ───────────────────────────────────────────────────
+_audit.log
+_audit_result.json
+_*preview*.json
+_rediscover.log
+_discover_test.log
+
+# ── OS noise ─────────────────────────────────────────────────────────────────
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# NOTE — deliberately NOT ignored:
+#   feeders_cache_*.json  30-day TTL and slow/flaky to rebuild (Overpass), so a
+#                         fresh clone or deploy works immediately.
+#   venue_*.json          auto-discovered venue profiles — real data, not cache.
+#   floorplan_*.json      uploaded floor-plan analyses — real data.
+#   memory/               project context carried across machines/accounts.

@@ -1,0 +1,43 @@
+{
+  "disruptions": [
+    {
+      "id": "d001",
+      "type": "construction",
+      "description": "Metro Line 3 underground construction",
+      "location": "Marine Drive near Churchgate",
+      "lat": 18.9310,
+      "lng": 72.8220,
+      "affected_corridor": "Marine Drive",
+      "affected_venue": "wankhede",
+      "severity": 0.4,
+      "start_date": "2024-01-01",
+      "end_date": "2026-12-31"
+    },
+    {
+      "id": "d002",
+      "type": "road_work",
+      "description": "Bandra-Worli Sea Link approach road resurfacing",
+      "location": "Worli Sea Link exit ramp near Worli",
+      "lat": 18.9833,
+      "lng": 72.8168,
+      "affected_corridor": "Worli Sea Link exit ramp",
+      "affected_venue": "dome",
+      "severity": 0.3,
+      "start_date": "2025-03-01",
+      "end_date": "2026-06-30"
+    },
+    {
+      "id": "d003",
+      "type": "construction",
+      "description": "Navi Mumbai Metro Line 1 elevated pier construction",
+      "location": "Thane-Belapur Road near DY Patil Stadium",
+      "lat": 19.0470,
+      "lng": 73.0240,
+      "affected_corridor": "Thane-Belapur Road",
+      "affected_venue": "dypatil",
+      "severity": 0.35,
+      "start_date": "2024-06-01",
+      "end_date": "2027-03-31"
+    }
+  ]
+}

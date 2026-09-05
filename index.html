@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>EventTraffic — Mumbai</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Segoe UI',system-ui,sans-serif; background:#111; color:#fff;
+           height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+
+    /* ── Header ── */
+    #header { padding:8px 18px; background:#1a1a1a; border-bottom:1px solid #2a2a2a;
+              display:flex; align-items:center; justify-content:space-between; flex-shrink:0; gap:10px; }
+    #header h1 { font-size:14px; font-weight:700; letter-spacing:.02em; white-space:nowrap; }
+    #header-sub { font-size:11px; color:#555; margin-top:1px; }
+    .hdr-btns { display:flex; gap:8px; align-items:center; }
+
+    /* ── Research bar ── */
+    #research-bar { padding:6px 16px; background:#141414; border-bottom:1px solid #222;
+                    display:flex; gap:8px; align-items:center; flex-shrink:0; }
+    #research-input { flex:1; max-width:420px; background:#242424; color:#eee;
+                      border:1px solid #383838; padding:5px 10px; border-radius:5px; font-size:12px; }
+    #research-input::placeholder { color:#555; }
+    #research-input:focus { outline:none; border-color:#6366f1; }
+    #research-date { background:#242424; color:#eee; border:1px solid #383838;
+                     padding:5px 8px; border-radius:5px; font-size:12px; }
+    .btn-research { background:#6366f1; color:#fff; border:none; padding:5px 14px;
+                    border-radius:5px; font-size:12px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .btn-research:hover { background:#4f46e5; }
+    #research-status { font-size:11px; color:#666; }
+
+    /* ── Research result panel ── */
+    #research-panel { display:none; padding:7px 16px; background:#16161e;
+                      border-bottom:1px solid #222; font-size:11px; }
+    .rp-inner { display:flex; gap:12px; align-items:flex-start; flex-wrap:wrap; }
+    .rp-title { font-weight:700; color:#a5b4fc; font-size:12px; }
+    .rp-pill { padding:2px 8px; border-radius:12px; font-size:10px; font-weight:700; }
+    .rp-row { color:#aaa; }
+    .rp-row b { color:#ddd; }
+    .rp-override { font-size:10px; color:#666; margin-top:3px; }
+    .btn-apply { background:#1d4ed8; color:#fff; border:none; padding:4px 12px;
+                 border-radius:4px; font-size:11px; cursor:pointer; }
+    .btn-apply:hover { background:#1e40af; }
+
+    /* ── Controls ── */
+    #controls { padding:6px 16px; background:#1a1a1a; border-bottom:1px solid #252525;
+                display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; flex-shrink:0; }
+    .ctrl-group { display:flex; flex-direction:column; gap:3px; }
+    .ctrl-label { font-size:9px; color:#666; text-transform:uppercase; letter-spacing:.06em; font-weight:600; }
+    #controls select,
+    #controls input[type="number"],
+    #controls input[type="time"] { background:#242424; color:#eee; border:1px solid #383838;
+                                   padding:4px 8px; border-radius:5px; font-size:12px; min-width:100px; }
+    #controls select:focus,#controls input:focus { outline:none; border-color:#E24B4A; }
+    #controls input[type="range"] { width:150px; accent-color:#E24B4A; cursor:pointer; }
+    .time-display { font-size:11px; color:#E24B4A; font-weight:700; text-align:center; min-width:85px; margin-top:2px; }
+
+    /* Resale badge */
+    #resale-badge { font-size:10px; padding:3px 0; min-width:220px; color:#aaa; }
+
+    /* ── Transit augmentation panel ── */
+    #aug-panel { padding:5px 16px; background:#13131b; border-bottom:1px solid #1e1e2e;
+                 display:flex; gap:14px; align-items:center; flex-wrap:wrap; flex-shrink:0; }
+    .aug-label { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:.06em;
+                 font-weight:700; white-space:nowrap; }
+    .aug-check { display:flex; align-items:center; gap:5px; font-size:11px; color:#aaa; cursor:pointer; }
+    .aug-check input[type=checkbox] { accent-color:#6366f1; width:13px; height:13px; cursor:pointer; }
+    .aug-check:hover { color:#ddd; }
+    #aug-summary { font-size:10px; color:#a5b4fc; margin-left:auto; max-width:340px; text-align:right; }
+
+    /* ── Buttons ── */
+    .btn { background:#E24B4A; color:#fff; border:none; padding:6px 14px; border-radius:5px;
+           font-size:12px; font-weight:600; cursor:pointer; transition:background .15s; white-space:nowrap; }
+    .btn:hover { background:#c73c3c; }
+    .btn-export { background:#1d4ed8; } .btn-export:hover { background:#1e3a8a; }
+    #status { font-size:11px; color:#555; margin-left:auto; white-space:nowrap; padding-bottom:4px; }
+
+    /* ── Map ── */
+    #map { flex:1; min-height:0; }
+
+    /* ── Info panel ── */
+    #info-panel { position:fixed; bottom:18px; left:12px; z-index:1000;
+                  background:rgba(18,18,18,.94); border:1px solid #2e2e2e; border-radius:9px;
+                  padding:13px 15px; min-width:218px; max-width:258px;
+                  backdrop-filter:blur(6px); font-size:12px; box-shadow:0 4px 20px rgba(0,0,0,.5); }
+    .ip-venue { font-size:12px; font-weight:700; color:#ddd; margin-bottom:8px; line-height:1.4; }
+    .ip-eci-row { display:flex; align-items:center; gap:10px; margin-bottom:8px; }
+    .ip-eci-val { font-size:36px; font-weight:800; line-height:1; }
+    .ip-los-badge { font-size:14px; font-weight:800; padding:3px 9px; border-radius:5px; display:inline-block; }
+    .ip-los-sub { font-size:9px; color:#666; margin-top:3px; text-transform:uppercase; letter-spacing:.05em; }
+    .ip-transport { margin:7px 0; padding:6px 10px; background:#1c1c1c; border-radius:5px;
+                    font-size:11px; color:#bbb; text-align:center; letter-spacing:.04em; }
+    .ip-row { display:flex; justify-content:space-between; margin-bottom:3px; font-size:11px; color:#777; gap:8px; }
+    .ip-row span:last-child { color:#ccc; font-weight:500; text-align:right; }
+    .ip-hist { font-size:10px; color:#555; margin-top:6px; }
+    .ip-crowd-profile { margin-top:7px; padding:5px 8px; background:#1c1c2e; border-radius:5px;
+                        font-size:10px; color:#a5b4fc; line-height:1.5; }
+    .ip-aug-active { margin-top:6px; padding:5px 8px; background:rgba(99,102,241,.12);
+                     border:1px solid rgba(99,102,241,.3); border-radius:5px; font-size:10px; color:#a5b4fc; }
+    .ip-disruption { margin-top:7px; padding:5px 8px; background:rgba(234,179,8,.12);
+                     border:1px solid rgba(234,179,8,.3); border-radius:5px; font-size:10px; color:#EAB308; }
+    .ip-parking { margin-top:7px; padding:5px 8px; background:rgba(56,189,248,.10);
+                  border:1px solid rgba(56,189,248,.28); border-radius:5px; font-size:10px;
+                  color:#bae6fd; line-height:1.6; }
+
+    /* ── Legend ── */
+    #legend { position:fixed; bottom:18px; right:12px; z-index:1000;
+              background:rgba(18,18,18,.94); border:1px solid #2e2e2e; border-radius:9px;
+              padding:12px 14px; min-width:178px; backdrop-filter:blur(6px);
+              box-shadow:0 4px 20px rgba(0,0,0,.5); }
+    .leg-title { font-size:9px; color:#555; text-transform:uppercase; letter-spacing:.07em;
+                 font-weight:700; margin-bottom:8px; }
+    .leg-row { display:flex; align-items:center; gap:9px; margin-bottom:5px; font-size:11px; color:#aaa; }
+    .leg-swatch { width:26px; height:5px; border-radius:3px; flex-shrink:0; }
+    .leg-sep { border-top:1px solid #2a2a2a; margin:9px 0; }
+    .leg-icon { font-size:10px; color:#777; margin-bottom:3px; }
+
+    /* ── Disruption banner ── */
+    #disruption-banner { display:none; position:fixed; top:74px; left:50%; transform:translateX(-50%);
+                         z-index:1001; background:rgba(234,179,8,.13); border:1px solid rgba(234,179,8,.45);
+                         border-radius:6px; padding:5px 14px; font-size:11px; color:#EAB308;
+                         white-space:nowrap; backdrop-filter:blur(4px); box-shadow:0 2px 12px rgba(0,0,0,.4); }
+
+    /* ── Spinner ── */
+    .spinner { display:inline-block; width:12px; height:12px; border:2px solid #666;
+               border-top-color:#a5b4fc; border-radius:50%; animation:spin .7s linear infinite; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ── Live status badge ── */
+    #live-badge { font-size:11px; font-weight:700; padding:3px 10px; border-radius:12px;
+                  background:rgba(29,158,117,.15); color:#1D9E75; white-space:nowrap;
+                  transition:background .3s,color .3s; }
+    #live-badge.has-alerts { background:rgba(239,68,68,.18); color:#ef4444; }
+    #live-updated { font-size:10px; color:#444; white-space:nowrap; }
+
+    /* ── Report-ready banner ── */
+    #report-banner { display:none; padding:5px 16px; background:rgba(99,102,241,.13);
+                     border-bottom:1px solid rgba(99,102,241,.28); flex-shrink:0;
+                     align-items:center; gap:10px; font-size:11px; color:#a5b4fc; }
+    #report-banner.live-alert { background:rgba(239,68,68,.13);
+                                border-bottom-color:rgba(239,68,68,.3); color:#ef4444; }
+    .btn-rpt { background:#6366f1; color:#fff; border:none; padding:3px 12px;
+               border-radius:4px; font-size:11px; font-weight:600; cursor:pointer; white-space:nowrap; }
+    .btn-rpt:hover { background:#4f46e5; }
+    .btn-rpt-blue { background:#1d4ed8; } .btn-rpt-blue:hover { background:#1e40af; }
+    .btn-rpt-dismiss { background:none; border:none; color:#555; font-size:15px;
+                       cursor:pointer; margin-left:auto; line-height:1; }
+    .btn-rpt-dismiss:hover { color:#aaa; }
+
+    /* ── Live-closure road style (drawn in JS, class on SVG path via Leaflet) ── */
+    @keyframes road-pulse { 0%{opacity:1} 50%{opacity:.25} 100%{opacity:1} }
+    .leaflet-live-closure { animation: road-pulse 1.2s ease-in-out infinite; }
+
+    /* ── Historical learning panel ── */
+    #ip-hist-section { margin-top:8px; border-top:1px solid #242424; padding-top:6px; }
+    #ip-hist-toggle { cursor:pointer; display:flex; justify-content:space-between; align-items:center;
+                      font-size:10px; color:#555; padding:2px 0; user-select:none; }
+    #ip-hist-toggle:hover { color:#888; }
+    #ip-hist-toggle:hover #ip-hist-arrow { color:#888; }
+    #ip-hist-meta { font-size:9px; color:#555; margin:4px 0 5px; line-height:1.5; }
+    .hist-sim-label { font-size:8px; color:#444; text-transform:uppercase; letter-spacing:.06em;
+                      margin:6px 0 3px; }
+    .hist-sim-item { border-left:2px solid #2e2e2e; padding-left:7px; margin:4px 0; }
+    .hist-sim-name { font-size:10px; color:#ccc; line-height:1.4; }
+    .hist-sim-meta { font-size:9px; color:#555; margin-top:1px; }
+    .hist-sim-sev  { font-size:9px; font-weight:700; margin-top:1px; }
+    .hist-tbl { width:100%; border-collapse:collapse; margin-top:5px; }
+    .hist-tbl th { font-size:8px; color:#3a3a3a; text-transform:uppercase; letter-spacing:.05em;
+                   text-align:left; padding:2px 3px; border-bottom:1px solid #222; }
+    .hist-tbl td { font-size:9px; padding:2px 3px; border-top:1px solid #1e1e1e; }
+    .hist-tbl-label { font-size:8px; color:#444; text-transform:uppercase;
+                      letter-spacing:.06em; margin:6px 0 2px; }
+
+    /* ── View toggle ── */
+    #view-toggle { display:flex; gap:0; border-radius:6px; overflow:hidden;
+                   border:1px solid #2e2e2e; flex-shrink:0; }
+    .view-btn { padding:4px 13px; font-size:11px; font-weight:700; cursor:pointer;
+                border:none; background:#1a1a1a; color:#555;
+                transition:background .15s, color .15s; white-space:nowrap; }
+    .view-btn.active { background:#E24B4A; color:#fff; }
+    .view-btn:not(.active):hover { background:#252525; color:#ccc; }
+    .view-btn-foot.active { background:#6366f1; }
+    .view-btn-staff.active { background:#0d9488; }
+
+    /* ── Gate / pedestrian markers ── */
+    @keyframes gate-pulse { 0%{box-shadow:0 0 6px var(--gc)} 50%{box-shadow:0 0 22px var(--gc)} 100%{box-shadow:0 0 6px var(--gc)} }
+    .gate-bubble { border-radius:50%; display:flex; align-items:center; justify-content:center;
+                   font-weight:900; border:3px solid; transition:transform .15s;
+                   cursor:pointer; }
+    .gate-bubble.pulsing { animation: gate-pulse 1.4s ease-in-out infinite; }
+    .gate-bubble:hover { transform:scale(1.15); }
+
+    /* ── Foot traffic info box (replaces info panel when in foot view) ── */
+    #foot-panel { position:fixed; bottom:18px; left:12px; z-index:1000;
+                  background:rgba(18,18,18,.94); border:1px solid #2e2e2e;
+                  border-radius:9px; padding:13px 15px; min-width:218px; max-width:265px;
+                  backdrop-filter:blur(6px); font-size:12px;
+                  box-shadow:0 4px 20px rgba(0,0,0,.5); display:none; }
+    .fp-title  { font-size:12px; font-weight:700; color:#ddd; margin-bottom:8px; }
+    .fp-metric { display:flex; justify-content:space-between; margin-bottom:3px;
+                 font-size:11px; color:#666; gap:8px; }
+    .fp-metric span:last-child { color:#ccc; font-weight:500; }
+    .fp-gate-row { display:flex; align-items:center; gap:7px; padding:4px 0;
+                   border-top:1px solid #1e1e1e; font-size:10px; cursor:pointer;
+                   transition:background .1s; border-radius:3px; }
+    .fp-gate-row:hover { background:rgba(255,255,255,.04); }
+    .fp-gate-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .fp-gate-name { color:#ccc; flex:1; line-height:1.3; }
+    .fp-gate-util { font-weight:700; font-size:10px; }
+    .fp-legend-row { display:flex; align-items:center; gap:7px; font-size:10px;
+                     color:#555; margin:3px 0; }
+
+    /* ── Staff Ops panel ── */
+    #staff-panel { position:fixed; bottom:18px; left:12px; z-index:1000;
+                   background:rgba(18,18,18,.94); border:1px solid #2e2e2e;
+                   border-radius:9px; padding:13px 15px; min-width:250px; max-width:300px;
+                   max-height:74vh; overflow-y:auto; backdrop-filter:blur(6px);
+                   font-size:12px; box-shadow:0 4px 20px rgba(0,0,0,.5); display:none; }
+    .sp-title { font-size:12px; font-weight:700; color:#5eead4; margin-bottom:3px; }
+    .sp-summary { font-size:10px; color:#8b8b8b; line-height:1.5; margin-bottom:8px;
+                  border-bottom:1px solid #242424; padding-bottom:7px; }
+    .sp-role { border-left:3px solid #0d9488; padding:5px 0 5px 8px; margin:7px 0;
+               background:rgba(13,148,136,.06); border-radius:0 4px 4px 0; }
+    .sp-role-hd { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+    .sp-role-name { font-size:11px; font-weight:700; color:#ddd; }
+    .sp-role-head { font-size:14px; font-weight:800; color:#5eead4; white-space:nowrap; }
+    .sp-role-detail { font-size:9px; color:#888; margin:2px 0 3px; line-height:1.45; }
+    .sp-time { font-size:9px; color:#5eead4; margin:2px 0; }
+    .sp-time b { color:#aaa; font-weight:600; }
+    .sp-task { font-size:9px; color:#aaa; line-height:1.5; margin:2px 0 2px 2px; padding-left:9px;
+               position:relative; }
+    .sp-task::before { content:"▸"; position:absolute; left:0; color:#0d9488; }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ── -->
+<div id="header">
+  <div>
+    <h1>⚡ EventTraffic Platform — Mumbai</h1>
+    <div id="header-sub">Predictive road congestion · artist demographics · resale intelligence</div>
+  </div>
+  <div class="hdr-btns" style="display:flex;align-items:center;gap:10px;">
+    <span id="live-badge">🟢 Live</span>
+    <span id="live-updated"></span>
+    <div id="view-toggle">
+      <button class="view-btn active" id="btn-vehicular" onclick="setView('vehicular')">🚗 Vehicular</button>
+      <button class="view-btn view-btn-foot" id="btn-foot" onclick="setView('foot')">🚶 Foot Traffic</button>
+      <button class="view-btn view-btn-staff" id="btn-staff" onclick="setView('staff')">👷 Staff Ops</button>
+    </div>
+    <button class="btn" style="background:#374151" onclick="refreshDisruptions()">🔄 Disruptions</button>
+    <button class="btn btn-export" onclick="exportThoroughReport()" title="Generates a multi-page PDF report with 5 time-phased maps">📄 Export Report</button>
+  </div>
+</div>
+
+<!-- ── Auto-research bar ── -->
+<div id="research-bar">
+  <span style="font-size:11px;color:#555;white-space:nowrap;">🔍 Auto-research:</span>
+  <input id="research-input" type="text" placeholder="e.g. Coldplay Mumbai DY Patil Jan 2025 …" autocomplete="off">
+  <input id="research-date"  type="date" style="min-width:130px;">
+  <button class="btn-research" onclick="runResearch()">Research</button>
+  <span id="research-status"></span>
+</div>
+
+<!-- ── Research result panel ── -->
+<div id="research-panel">
+  <div class="rp-inner" id="rp-content"></div>
+</div>
+
+<!-- ── Controls ── -->
+<div id="controls">
+  <div class="ctrl-group">
+    <div class="ctrl-label">Venue</div>
+    <select id="venue-select">
+      <option value="wankhede">Wankhede Stadium</option>
+      <option value="dome">Dome @ NSCI SVP Stadium, Worli</option>
+      <option value="dypatil">DY Patil Stadium</option>
+      <option value="nesco">NESCO / Bombay Exhibition Centre</option>
+      <option value="mmrda">MMRDA Ground, BKC</option>
+      <option value="mahalaxmi">Mahalaxmi Racecourse</option>
+    </select>
+    <button class="btn" id="addvenue-btn" onclick="openAddVenue()" title="Add any venue by coordinates — the platform builds its road, station, parking and gate profile from OpenStreetMap"
+            style="font-size:11px;padding:3px 9px;margin-top:3px;">➕ Add venue by coords</button>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Gate Layout</div>
+    <select id="layout-select" title="Event-specific entry/exit gate setup">
+      <option value="default">Default setup</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Event Type</div>
+    <select id="event-type-select">
+      <option value="cricket">Cricket</option>
+      <option value="concert">Concert</option>
+      <option value="football">Football</option>
+      <option value="other">Other</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Artist Origin</div>
+    <select id="artist-origin">
+      <option value="western_superstar">Western Superstar</option>
+      <option value="western_midtier">Western Mid-tier</option>
+      <option value="indian_mainstream">Indian Mainstream</option>
+      <option value="indian_hiphop">Indian Hip-Hop</option>
+      <option value="bollywood_party">Bollywood / DJ Night</option>
+      <option value="edm_festival">EDM Festival</option>
+      <option value="sports" selected>Sports</option>
+    </select>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Crowd Size</div>
+    <input type="number" id="crowd-select" value="33000" min="100" max="120000" step="500"
+           list="crowd-presets" style="min-width:110px;" title="Type any crowd size (100–120,000)">
+    <datalist id="crowd-presets">
+      <option value="5000"  label="Dome — small"></option>
+      <option value="6000"  label="Dome — sold out"></option>
+      <option value="10000" label="Mid concert"></option>
+      <option value="20000" label="Stadium — partial"></option>
+      <option value="33000" label="Wankhede IPL"></option>
+      <option value="40000" label="Lollapalooza daily"></option>
+      <option value="50000" label="Coldplay DY Patil"></option>
+      <option value="75000" label="Mega event"></option>
+    </datalist>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Time relative to event</div>
+    <input type="range" id="time-slider" min="-120" max="180" value="60" step="30">
+    <div class="time-display" id="time-label">1 hr before</div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Event Date</div>
+    <input type="date" id="event-date" style="min-width:128px;background:#242424;color:#eee;border:1px solid #383838;padding:4px 8px;border-radius:5px;font-size:12px;">
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Event Start</div>
+    <input type="time" id="event-time" value="19:30" style="min-width:88px;">
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Floor Plan</div>
+    <input type="file" id="floorplan-file" accept="image/png,image/jpeg,image/webp,.pdf" style="display:none;">
+    <button class="btn" id="floorplan-btn" onclick="document.getElementById('floorplan-file').click()"
+            style="font-size:11px;padding:4px 10px;" title="Upload a venue floor plan / site layout (image or PDF) — AI extracts entrances, exits, VIP/GA zones, washrooms, bars and predicts where it gets cramped">
+      📐 Upload plan
+    </button>
+    <div id="floorplan-note" style="font-size:9px;color:#888;margin-top:2px;max-width:150px;"></div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Weather</div>
+    <select id="weather-select">
+      <option value="clear">☀️ Clear</option>
+      <option value="light_rain">🌦 Light rain (+15%)</option>
+      <option value="heavy_rain">🌧 Heavy rain / monsoon (+35%)</option>
+    </select>
+    <div id="weather-note" style="font-size:9px;color:#888;margin-top:2px;max-width:170px;"></div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Face value ₹</div>
+    <input type="number" id="original-price" value="1500" min="0" max="200000" step="100" style="min-width:90px;">
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Effective / resale ₹</div>
+    <input type="number" id="effective-price" value="1500" min="0" max="2000000" step="100" style="min-width:90px;">
+    <div id="resale-badge"></div>
+  </div>
+
+  <div class="ctrl-group">
+    <div class="ctrl-label">Out-of-city %</div>
+    <input type="range" id="ooc-slider" min="0" max="40" value="5" step="1" style="width:100px;">
+    <div class="time-display" id="ooc-label" style="min-width:60px;font-size:10px;">5%</div>
+  </div>
+
+  <button class="btn" onclick="refresh()">Update</button>
+  <span id="status">Ready</span>
+</div>
+
+<!-- ── Transit augmentation ── -->
+<div id="aug-panel">
+  <span class="aug-label">Transit Augmentation:</span>
+  <label class="aug-check"><input type="checkbox" id="aug-special-train">🚂 Special event train</label>
+  <label class="aug-check"><input type="checkbox" id="aug-metro">🚇 Extended metro hrs</label>
+  <label class="aug-check"><input type="checkbox" id="aug-shuttle">🚌 Shuttle bus service</label>
+  <label class="aug-check"><input type="checkbox" id="aug-uber">📍 Dedicated Uber/Ola zone</label>
+  <label class="aug-check"><input type="checkbox" id="aug-hvban">🚫 Heavy vehicle ban</label>
+  <div id="aug-summary"></div>
+</div>
+
+<!-- ── Auto-report / live-alert banner ── -->
+<div id="report-banner">
+  <span id="report-banner-text">📋 Report ready</span>
+  <button class="btn-rpt" onclick="openLatestReport()">Open PDF</button>
+  <button class="btn-rpt btn-rpt-blue" onclick="downloadLatestReport()">⬇ Download</button>
+  <button class="btn-rpt-dismiss" onclick="document.getElementById('report-banner').style.display='none'" title="Dismiss">×</button>
+</div>
+
+<!-- ── Map ── -->
+<div id="map"></div>
+
+<!-- ── Info panel ── -->
+<div id="info-panel">
+  <div class="ip-venue" id="ip-venue">Select options and click Update</div>
+  <div class="ip-eci-row">
+    <div class="ip-eci-val" id="ip-eci" style="color:#555">—</div>
+    <div>
+      <div class="ip-los-badge" id="ip-los" style="background:#222;color:#555">—</div>
+      <div class="ip-los-sub">Worst corridor</div>
+    </div>
+  </div>
+  <div class="ip-transport" id="ip-transport">🚶 —%&nbsp;&nbsp;🚂 —%&nbsp;&nbsp;🚗 —%</div>
+  <div class="ip-row"><span>Peak corridor</span><span id="ip-corridor">—</span></div>
+  <div class="ip-row"><span>Predicted peak</span><span id="ip-peak">—</span></div>
+  <div class="ip-row"><span>Est. clearance</span><span id="ip-clearance">—</span></div>
+  <div class="ip-row"><span>Car multiplier</span><span id="ip-carmult">—</span></div>
+  <div class="ip-hist" id="ip-hist">No data loaded yet</div>
+  <div id="ip-crowd-profile" class="ip-crowd-profile" style="display:none"></div>
+  <div id="ip-aug-active"    class="ip-aug-active"    style="display:none"></div>
+  <div id="ip-parking"       class="ip-parking"       style="display:none"></div>
+  <div id="ip-disruption-box" class="ip-disruption"   style="display:none"></div>
+
+  <!-- ── Historical learning collapsible ── -->
+  <div id="ip-hist-section">
+    <div id="ip-hist-toggle" onclick="toggleHistPanel()">
+      <span>📊 Historical Learning</span>
+      <span style="display:flex;align-items:center;gap:5px;">
+        <span id="ip-hist-conf-badge" style="font-weight:700;font-size:9px;">—</span>
+        <span id="ip-hist-arrow" style="color:#444;font-size:10px;">▸</span>
+      </span>
+    </div>
+    <div id="ip-hist-body" style="display:none;">
+      <div id="ip-hist-meta" class="ip-hist-meta"></div>
+      <div id="ip-hist-similar-label" class="hist-sim-label" style="display:none;">Similar past events</div>
+      <div id="ip-hist-similar"></div>
+      <div class="hist-tbl-label" id="ip-hist-tbl-label" style="display:none;">Corridor historical baselines</div>
+      <div id="ip-hist-table-wrap" style="overflow-x:auto;max-height:140px;overflow-y:auto;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Legend ── -->
+<div id="legend">
+  <div class="leg-title">Level of Service</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#1D9E75"></div>A — Free flow</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#84CC16"></div>B — Reasonable</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#EAB308"></div>C — Stable</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#F97316"></div>D — Near capacity</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#E24B4A"></div>E — Unstable</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:#7F1D1D"></div>F — Breakdown</div>
+  <div class="leg-sep"></div>
+  <div class="leg-title">Venue &amp; Gates</div>
+  <div class="leg-row"><div class="leg-swatch" style="background:rgba(226,75,74,.18);border:1.5px dashed #fff;height:11px;border-radius:2px;"></div>Venue outline</div>
+  <div class="leg-icon"><span style="color:#1D9E75;font-weight:800;">▾ IN</span> Entrance &nbsp; <span style="color:#E24B4A;font-weight:800;">▾ OUT</span> Exit</div>
+  <div class="leg-icon"><span style="color:#EAB308;font-weight:800;">▾ IN/OUT</span> Shared gate</div>
+  <div class="leg-sep"></div>
+  <div class="leg-title">Indicators</div>
+  <div class="leg-icon">👮 Police deployment</div>
+  <div class="leg-icon">🚧 Barricade point</div>
+  <div class="leg-icon">🔀 Diversion route</div>
+  <div class="leg-icon"><b>P</b> Parking lot (fill % shown, colour = congestion)</div>
+  <div class="leg-icon">🚕 Uber/Ola pickup zone (load % shown)</div>
+  <div class="leg-icon">🚉 Special train station</div>
+  <div class="leg-icon">🚗 Out-of-city corridor</div>
+</div>
+
+<!-- ── Foot traffic panel (shown when foot view is active) ── -->
+<div id="foot-panel">
+  <div class="fp-title" id="fp-venue">🚶 Foot Traffic</div>
+  <div style="margin-bottom:8px;padding:6px 9px;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);border-radius:5px;">
+    <div class="fp-metric"><span>Total walking flow</span><span id="fp-total-flow">—</span></div>
+    <div class="fp-metric"><span>Walking population</span><span id="fp-walk-pop">—</span></div>
+    <div class="fp-metric"><span>Phase</span><span id="fp-phase">—</span></div>
+  </div>
+  <div id="fp-gates-list" style="margin-top:2px;"></div>
+  <div style="margin-top:8px;border-top:1px solid #1e1e1e;padding-top:6px;">
+    <div class="leg-title" style="margin-bottom:4px;">Crowd density</div>
+    <div style="height:9px;border-radius:5px;margin:2px 0 3px;
+                background:linear-gradient(90deg,#1D9E75,#84CC16,#EAB308,#F97316,#E24B4A,#7F1D1D);"></div>
+    <div style="display:flex;justify-content:space-between;font-size:8px;color:#777;">
+      <span>Low / free-flow</span><span>Overcrowded</span></div>
+    <div class="fp-legend-row" style="margin-top:5px;">🔵 Gate bubble = utilisation % &amp; LOS</div>
+    <div class="fp-legend-row">⠿ Dashed line = walking route (click for detail)</div>
+  </div>
+</div>
+
+<!-- ── Staff Ops panel (shown when staff view is active) ── -->
+<div id="staff-panel">
+  <div class="sp-title" id="sp-venue">👷 Staff &amp; Operations</div>
+  <div class="sp-summary" id="sp-summary">—</div>
+  <div id="sp-density"></div>
+  <div id="sp-roles"></div>
+</div>
+
+<!-- ── Add-venue-by-coordinates modal ── -->
+<div id="addvenue-modal" style="display:none;position:fixed;inset:0;z-index:3000;
+     background:rgba(0,0,0,.72);align-items:center;justify-content:center;">
+  <div style="background:#161616;border:1px solid #383838;border-radius:10px;padding:18px 20px;
+       width:min(620px,92vw);max-height:86vh;overflow:auto;box-shadow:0 10px 40px rgba(0,0,0,.6);">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div style="font-size:15px;font-weight:800;color:#eee;">➕ Add a venue from coordinates</div>
+      <span onclick="closeAddVenue()" style="cursor:pointer;color:#888;font-size:18px;">✕</span>
+    </div>
+    <div style="font-size:11px;color:#999;margin:6px 0 12px;">
+      Paste coordinates from Google Maps (right-click a venue → the lat, lng at the top).
+      The platform reads OpenStreetMap to build the venue outline, approach roads, nearest
+      station, parking and feeder highways — no manual setup.
+    </div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+      <div>
+        <div class="ctrl-label">Coordinates (lat, lng)</div>
+        <input id="av-coords" type="text" placeholder="28.5828, 77.2337"
+               style="width:210px;background:#242424;color:#eee;border:1px solid #383838;padding:5px 8px;border-radius:5px;font-size:12px;">
+      </div>
+      <div>
+        <div class="ctrl-label">Name (optional)</div>
+        <input id="av-name" type="text" placeholder="auto-detected from OSM"
+               style="width:210px;background:#242424;color:#eee;border:1px solid #383838;padding:5px 8px;border-radius:5px;font-size:12px;">
+      </div>
+      <button class="btn" id="av-discover" onclick="runDiscover()" style="padding:6px 14px;">🔍 Discover</button>
+    </div>
+    <div id="av-result" style="margin-top:12px;font-size:11.5px;color:#ccc;"></div>
+  </div>
+</div>
+
+<!-- ── Disruption banner ── -->
+<div id="disruption-banner"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script>
+'use strict';
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const VENUE_COORDS = {
+  wankhede:[18.9388,72.8251], dome:[18.9865,72.8155], dypatil:[19.0433,73.0278],
+  nesco:[19.1493,72.8542], mmrda:[19.0674,72.8613], mahalaxmi:[18.9852,72.8198]
+};
+const LOS_COLOURS = {
+  A:'#1D9E75',B:'#84CC16',C:'#EAB308',D:'#F97316',E:'#E24B4A',F:'#7F1D1D'
+};
+const LOS_NAMES = {
+  A:'Free flow',B:'Reasonable',C:'Stable',D:'Near capacity',E:'Unstable',F:'Breakdown'
+};
+const RESALE_COLOURS = {
+  severe_collapse:'#ef4444', moderate_collapse:'#f97316', minor_collapse:'#EAB308',
+  normal:'#84CC16', premium:'#1D9E75', extreme_premium:'#8b5cf6', unknown:'#666'
+};
+const RESALE_EMOJIS = {
+  severe_collapse:'🔴', moderate_collapse:'🟠', minor_collapse:'🟡',
+  normal:'🟢', premium:'🟢', extreme_premium:'🟣', unknown:'⚪'
+};
+
+// ── Map init ──────────────────────────────────────────────────────────────────
+const map = L.map('map',{zoomControl:true}).setView([18.9388,72.8251],13);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{
+  attribution:'© OpenStreetMap © CARTO', maxZoom:19
+}).addTo(map);
+
+let corridorLayers=[],markerLayers=[],footLayers=[],gateTypeLayers=[],parkingLayers=[],staffLayers=[],venueMarker=null,venueOutline=null,lastData=null,debounceTimer=null;
+let researchResult=null;
+let currentView='vehicular'; // 'vehicular' | 'foot'
+
+// ── Time slider ───────────────────────────────────────────────────────────────
+const slider=document.getElementById('time-slider');
+const timeLabel=document.getElementById('time-label');
+function minutesLabel(v){
+  v=parseInt(v);
+  if(v>0){ return v%60===0?`${v/60} hr${v/60>1?'s':''} before`:`${v} min before`; }
+  if(v===0) return 'Event time';
+  const a=Math.abs(v);
+  return a%60===0?`${a/60} hr${a/60>1?'s':''} after`:`${a} min after`;
+}
+slider.addEventListener('input',()=>{ timeLabel.textContent=minutesLabel(slider.value); scheduleRefresh(); });
+
+// ── OOC slider ────────────────────────────────────────────────────────────────
+const oocSlider=document.getElementById('ooc-slider');
+const oocLabel=document.getElementById('ooc-label');
+oocSlider.addEventListener('input',()=>{
+  const v=parseInt(oocSlider.value);
+  const crowd=parseInt(document.getElementById('crowd-select').value)||33000;
+  oocLabel.textContent=v===0?'0% (local)':v>10?`${v}% (~${Math.round(crowd*v/100).toLocaleString()} out-of-city)`:`${v}%`;
+  scheduleRefresh();
+});
+
+// ── Resale badge ──────────────────────────────────────────────────────────────
+function updateResaleBadge(){
+  const orig=parseFloat(document.getElementById('original-price').value)||0;
+  const eff =parseFloat(document.getElementById('effective-price').value)||0;
+  const badge=document.getElementById('resale-badge');
+  if(!orig||!eff){ badge.textContent=''; return; }
+  const ratio=eff/orig;
+  let signal='unknown';
+  if(ratio<0.50)      signal='severe_collapse';
+  else if(ratio<0.75) signal='moderate_collapse';
+  else if(ratio<1.0)  signal='minor_collapse';
+  else if(ratio<1.5)  signal='normal';
+  else if(ratio<3.0)  signal='premium';
+  else                signal='extreme_premium';
+  // Cap by absolute effective price — ratio alone doesn't make a crowd ultra-affluent
+  if(signal==='extreme_premium' && eff<10000) signal='premium';
+  if(signal==='premium'         && eff<2500)  signal='normal';
+  const em=RESALE_EMOJIS[signal]; const co=RESALE_COLOURS[signal];
+  const labels={severe_collapse:'Severe collapse — crowd shifted lower',
+    moderate_collapse:'Moderate collapse',minor_collapse:'Minor softness',
+    normal:'Normal market',premium:'Premium market — wealthier crowd',
+    extreme_premium:'Extreme premium — ultra-affluent, expect hotel cabs'};
+  badge.innerHTML=`<span style="color:${co}">${em} ${ratio.toFixed(2)}× — ${labels[signal]}</span>`;
+}
+['original-price','effective-price'].forEach(id=>{
+  document.getElementById(id).addEventListener('input',()=>{ updateResaleBadge(); scheduleRefresh(); });
+});
+
+// ── Auto-refresh with debounce ────────────────────────────────────────────────
+function scheduleRefresh(){
+  clearTimeout(debounceTimer);
+  debounceTimer=setTimeout(refresh,1000);
+}
+['venue-select','event-type-select','artist-origin','crowd-select','event-time','event-date','layout-select','weather-select'].forEach(id=>
+  document.getElementById(id).addEventListener('change',scheduleRefresh)
+);
+// Switching venue invalidates the venue-specific gate layouts — reset to default.
+document.getElementById('venue-select').addEventListener('change',()=>{
+  const sel=document.getElementById('layout-select');
+  if(sel){ sel.value='default'; _layoutVenue=null; }
+});
+['aug-special-train','aug-metro','aug-shuttle','aug-uber','aug-hvban'].forEach(id=>
+  document.getElementById(id).addEventListener('change',scheduleRefresh)
+);
+
+// ── Per-venue live weather (Open-Meteo point forecast) ───────────────────────
+// Monsoon cells are hyper-local: DY Patil can be dry while Worli floods.
+// Auto-fetch the forecast for the selected venue's own coordinates whenever
+// venue/date/time changes. A manual weather pick sticks until the next change.
+let weatherManual=false;
+document.getElementById('weather-select').addEventListener('change',()=>{ weatherManual=true; });
+
+async function fetchVenueWeather(){
+  const note=document.getElementById('weather-note');
+  const venue=document.getElementById('venue-select').value;
+  const date=document.getElementById('event-date')?.value||'';
+  const hour=parseInt((document.getElementById('event-time').value||'19:30').split(':')[0]);
+  try{
+    const r=await fetch(`/api/weather?venue=${venue}&date=${date}&hour=${hour}`);
+    const w=await r.json();
+    if(w.condition){
+      const em={clear:'☀️',light_rain:'🌦',heavy_rain:'🌧'}[w.condition];
+      note.textContent=`${em} Forecast @ venue: ${w.precip_mm_per_hr} mm/h · ${w.probability_pct}% chance (Open-Meteo)`;
+      if(!weatherManual){
+        const ws=document.getElementById('weather-select');
+        if(ws.value!==w.condition){ ws.value=w.condition; scheduleRefresh(); }
+      }
+    }else{
+      note.textContent=w.reason||'No forecast available — set manually';
+    }
+  }catch(e){ note.textContent='Weather fetch failed — set manually'; }
+}
+['venue-select','event-date','event-time'].forEach(id=>
+  document.getElementById(id).addEventListener('change',()=>{ weatherManual=false; fetchVenueWeather(); })
+);
+fetchVenueWeather();
+
+// ── Floor-plan upload → AI layout extraction ─────────────────────────────────
+async function refreshFloorplanNote(){
+  const note=document.getElementById('floorplan-note');
+  const venue=document.getElementById('venue-select').value;
+  try{
+    const fp=await (await fetch(`/api/floorplan?venue=${venue}`)).json();
+    if(fp.active){
+      const a=fp.analysis||{};
+      note.innerHTML=`✓ <b>${fp.filename||'plan'}</b> · ${(a.entrances||[]).length} in / ${(a.exits||[]).length} out / ${(a.zones||[]).length} zones
+        <span style="color:#E24B4A;cursor:pointer;" onclick="removeFloorplan()" title="Remove floor-plan calibration">✕</span>`;
+    }else note.textContent='No plan uploaded — using desk estimates';
+  }catch(e){ note.textContent=''; }
+}
+async function removeFloorplan(){
+  const venue=document.getElementById('venue-select').value;
+  await fetch(`/api/floorplan?venue=${venue}`,{method:'DELETE'});
+  refreshFloorplanNote(); scheduleRefresh();
+}
+document.getElementById('floorplan-file').addEventListener('change',async function(){
+  const file=this.files[0]; if(!file) return;
+  const venue=document.getElementById('venue-select').value;
+  const note=document.getElementById('floorplan-note');
+  const btn=document.getElementById('floorplan-btn');
+  btn.disabled=true; note.innerHTML='<span class="spinner"></span> Analysing plan (AI vision, ~20s)…';
+  try{
+    const fd=new FormData(); fd.append('file',file);
+    const r=await fetch(`/api/floorplan?venue=${venue}`,{method:'POST',body:fd});
+    const res=await r.json();
+    if(res.success){
+      const s=res.summary;
+      note.innerHTML=`✓ Extracted: <b>${s.entrances} entrances · ${s.exits} exits · ${s.zones} zones</b>`
+        +(s.pinch_points.length?`<br>⚠ ${s.pinch_points.length} pinch point(s) found`:'')
+        +` <span style="color:#888">(${s.confidence} confidence)</span>`;
+      scheduleRefresh();   // predictions now use the plan
+      setTimeout(refreshFloorplanNote, 4000);
+    }else{
+      note.innerHTML=`<span style="color:#E24B4A;">✗ ${res.error||'analysis failed'}</span>`;
+    }
+  }catch(e){ note.innerHTML=`<span style="color:#E24B4A;">✗ upload failed: ${e.message}</span>`; }
+  btn.disabled=false; this.value='';
+});
+document.getElementById('venue-select').addEventListener('change',refreshFloorplanNote);
+refreshFloorplanNote();
+
+// ── Add venue by coordinates (OSM auto-discovery) ───────────────────────────
+let discoveredProfile=null;
+function openAddVenue(){ document.getElementById('addvenue-modal').style.display='flex'; }
+function closeAddVenue(){ document.getElementById('addvenue-modal').style.display='none'; }
+
+const CONF_COLOUR={high:'#1D9E75',medium:'#EAB308',low:'#F97316',unknown:'#E24B4A',none:'#777'};
+
+async function runDiscover(){
+  const raw=document.getElementById('av-coords').value.trim();
+  const m=raw.match(/(-?\d+\.?\d*)\s*[, ]\s*(-?\d+\.?\d*)/);
+  const box=document.getElementById('av-result');
+  if(!m){ box.innerHTML='<span style="color:#E24B4A;">Enter coordinates as "lat, lng" — e.g. 28.5828, 77.2337</span>'; return; }
+  const [lat,lng]=[m[1],m[2]];
+  const name=document.getElementById('av-name').value.trim();
+  const btn=document.getElementById('av-discover'); btn.disabled=true;
+  box.innerHTML='<span class="spinner"></span> Reading OpenStreetMap — venue outline, roads, station, parking, feeders… (up to 60 s)';
+  try{
+    const r=await fetch(`/api/venue/discover?lat=${lat}&lng=${lng}&name=${encodeURIComponent(name)}`);
+    const res=await r.json();
+    if(!res.success){ box.innerHTML=`<span style="color:#E24B4A;">✗ ${res.error||'discovery failed'}</span>`; btn.disabled=false; return; }
+    discoveredProfile=res.profile;
+    const s=res.summary, p=res.profile;
+    const chip=(k)=>`<span style="background:${CONF_COLOUR[s.confidence[k]]||'#777'}22;color:${CONF_COLOUR[s.confidence[k]]||'#777'};
+      padding:1px 6px;border-radius:3px;font-size:9.5px;margin-left:4px;">${s.confidence[k]||'—'}</span>`;
+    box.innerHTML=`
+      <div style="font-size:13px;font-weight:700;color:#eee;">${s.name}</div>
+      <div style="color:#a5b4fc;font-size:11px;margin-bottom:6px;">
+        Calibration city: <b>${s.city}</b>${p.km_from_city_centre!=null?` · ${p.km_from_city_centre} km from centre`:
+        ' <span style="color:#F97316;">(outside our calibrated cities — using Mumbai defaults)</span>'}</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px 14px;">
+        <div>🏟 Footprint: <b>${s.footprint_area_m2?s.footprint_area_m2.toLocaleString()+' m²':'—'}</b>${chip('venue_outline')}</div>
+        <div>🛣 Approach roads: <b>${s.corridors}</b>${chip('corridors')}</div>
+        <div>🚉 Station: <b>${s.station||'none'}</b>${s.station_dist_km?` (${s.station_dist_km} km)`:''}${chip('station')}</div>
+        <div>🅿 Parking lots: <b>${s.parking_lots}</b>${chip('parking')}</div>
+        <div>🚪 Gates: <b>${s.gates}</b>${chip('gates')}</div>
+        <div>🛤 Feeder highways: <b>${s.feeders}</b>${chip('feeders')}</div>
+      </div>
+      ${p.corridors.length?`<div style="margin-top:6px;font-size:10.5px;color:#aaa;">Roads found:
+        ${p.corridors.slice(0,6).map(c=>`${c.road_name} <span style="color:#666">(${c.approach_from})</span>`).join(' · ')}</div>`:''}
+      ${(s.warnings||[]).map(w=>`<div style="color:#F97316;font-size:10.5px;margin-top:4px;">⚠ ${w}</div>`).join('')}
+      <button class="btn" onclick="saveDiscovered()" style="margin-top:10px;padding:6px 16px;">✓ Add this venue</button>`;
+  }catch(e){ box.innerHTML=`<span style="color:#E24B4A;">✗ ${e.message}</span>`; }
+  btn.disabled=false;
+}
+
+async function saveDiscovered(){
+  if(!discoveredProfile) return;
+  const box=document.getElementById('av-result');
+  try{
+    const r=await fetch('/api/venue/save',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({profile:discoveredProfile})});
+    const res=await r.json();
+    if(!res.success){ box.innerHTML+=`<div style="color:#E24B4A;">✗ ${res.error}</div>`; return; }
+    await loadVenueList();
+    const sel=document.getElementById('venue-select');
+    sel.value=res.venue_id; sel.dispatchEvent(new Event('change'));
+    closeAddVenue(); scheduleRefresh();
+  }catch(e){ box.innerHTML+=`<div style="color:#E24B4A;">✗ ${e.message}</div>`; }
+}
+
+// Populate the venue dropdown (built-in + discovered) from the API.
+async function loadVenueList(){
+  try{
+    const {venues}=await (await fetch('/api/venues')).json();
+    const sel=document.getElementById('venue-select');
+    const cur=sel.value;
+    sel.innerHTML=venues.map(v=>
+      `<option value="${v.id}">${v.auto?'📍 ':''}${v.name}${v.auto?' (auto)':''}</option>`).join('');
+    venues.forEach(v=>{ VENUE_COORDS[v.id]=[v.lat,v.lng]; });
+    if(venues.some(v=>v.id===cur)) sel.value=cur;
+  }catch(e){ /* keep the static list */ }
+}
+loadVenueList();
+
+// ── Artist origin → OOC default ───────────────────────────────────────────────
+const OOC_DEFAULTS={western_superstar:25,western_midtier:8,indian_mainstream:15,
+  indian_hiphop:5,bollywood_party:3,edm_festival:10,sports:5};
+document.getElementById('artist-origin').addEventListener('change',function(){
+  oocSlider.value=OOC_DEFAULTS[this.value]||5;
+  oocSlider.dispatchEvent(new Event('input'));
+});
+
+// ── Layer helpers ─────────────────────────────────────────────────────────────
+function clearLayers(){
+  corridorLayers.forEach(l=>map.removeLayer(l));
+  markerLayers.forEach(l=>map.removeLayer(l));
+  footLayers.forEach(l=>map.removeLayer(l));
+  gateTypeLayers.forEach(l=>map.removeLayer(l));
+  parkingLayers.forEach(l=>map.removeLayer(l));
+  staffLayers.forEach(l=>map.removeLayer(l));
+  corridorLayers=[];markerLayers=[];footLayers=[];gateTypeLayers=[];parkingLayers=[];staffLayers=[];
+}
+function makeIcon(emoji,bg,size=32){
+  return L.divIcon({
+    html:`<div style="width:${size}px;height:${size}px;background:${bg};border-radius:50%;
+              display:flex;align-items:center;justify-content:center;font-size:${size*0.52}px;
+              border:2px solid rgba(255,255,255,.2);box-shadow:0 2px 10px rgba(0,0,0,.6);">${emoji}</div>`,
+    className:'',iconSize:[size,size],iconAnchor:[size/2,size/2]
+  });
+}
+
+// ── Popup builders ────────────────────────────────────────────────────────────
+function corridorPopup(c){
+  const oc =c.out_of_city ?`<div style="margin-top:5px;font-size:10px;color:#a5b4fc;">🚗 Out-of-city arrival corridor</div>`:'';
+  const dis=c.disruption  ?`<div style="margin-top:5px;padding:3px 6px;background:rgba(234,179,8,.15);border-radius:3px;color:#EAB308;font-size:10px;">⚠ ${c.disruption.description}</div>`:'';
+  const live=c.live_alert ?`<div style="margin-top:5px;padding:3px 6px;background:rgba(239,68,68,.18);border-radius:3px;color:#ef4444;font-size:10px;font-weight:700;">${c.live_alert}</div>`:'';
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:190px;line-height:1.5;">
+    <b style="font-size:13px;">${c.road_name}</b><br>
+    <span style="color:${c.colour};font-size:13px;font-weight:700;">LOS ${c.los_grade} — ECI ${c.eci.toFixed(3)}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    🚗 Speed: <b>${c.predicted_speed_kmph} km/h</b><br>
+    🚦 Volume: <b>${c.vehicles_per_hour.toLocaleString()} veh/hr</b><br>
+    ⏱ Clearance: <b>${c.clearance_minutes} min</b><br>
+    📍 ${(c.road_type||'road').replace('_',' ')}${c.direction?' · '+c.direction:''}
+    ${oc}${dis}${live}
+  </div>`;
+}
+function policePopup(i){
+  const col=i.priority==='HIGH'?'#ef4444':'#f97316';
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:210px;line-height:1.6;">
+    <b>👮 Police Deployment</b><br>
+    <span style="color:${col};font-weight:700;font-size:12px;">Priority: ${i.priority}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📍 <b>${i.location_name}</b><br>⏰ Deploy by: <b>${i.deploy_by}</b><br>
+    👥 Personnel: <b>${i.personnel}</b><br>📊 Peak: ${i.peak_window}<br>🏁 Clearance: ${i.clearance}<br>
+    <div style="margin-top:5px;font-size:11px;color:#666;font-style:italic;">${i.recommendation}</div>
+  </div>`;
+}
+function barricadePopup(i){
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:210px;line-height:1.6;">
+    <b>🚧 Barricade Point</b><br><span style="color:#f97316;font-weight:700;">Priority: ${i.priority}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📍 <b>${i.location_name}</b><br>🔒 <b>${i.barricade_type||'Lane restriction'}</b><br>
+    ⏰ Activate: <b>${i.deploy_by}</b><br>🛣 ${i.restrict_lanes||'—'}<br>
+    🔀 Alt: <i>${i.alternative_route||'—'}</i>
+  </div>`;
+}
+function diversionPopup(i){
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:200px;line-height:1.6;">
+    <b>🔀 Diversion Route</b>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    🔁 From: <b>${i.diverted_from}</b><br>➡️ Via: <b>${i.diversion_via}</b><br>
+    ⏱ <b>${i.time_saving}</b><br>⏰ Activate: <b>${i.activation}</b>
+  </div>`;
+}
+function parkingPopup(i){
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:200px;line-height:1.6;">
+    <b>🅿️ Overflow Parking</b>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📍 <b>${i.location_name}</b><br>🚗 Capacity: <b>${i.capacity} vehicles</b><br>
+    ⏰ Open by: <b>${i.open_by}</b><br>🚶 ${i.walk_distance}
+  </div>`;
+}
+function pedestrianPopup(i){
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:195px;line-height:1.6;">
+    <b>🚉 Special Train Station</b>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📍 <b>${i.location_name}</b><br>${i.note}
+  </div>`;
+}
+
+// ── Main refresh ──────────────────────────────────────────────────────────────
+async function refresh(){
+  const venue=document.getElementById('venue-select').value;
+  const evType=document.getElementById('event-type-select').value;
+  const gateLayout=document.getElementById('layout-select')?.value||'default';
+  const crowd=document.getElementById('crowd-select').value;
+  const minutes=slider.value;
+  const evTime=document.getElementById('event-time').value;
+  const artist=document.getElementById('artist-origin').value;
+  const origPx=document.getElementById('original-price').value;
+  const effPx=document.getElementById('effective-price').value;
+  const ooc=oocSlider.value;
+  const sTrain=document.getElementById('aug-special-train').checked;
+  const metro=document.getElementById('aug-metro').checked;
+  const shuttle=document.getElementById('aug-shuttle').checked;
+  const uber=document.getElementById('aug-uber').checked;
+  const hvban=document.getElementById('aug-hvban').checked;
+  const weather=document.getElementById('weather-select')?.value||'clear';
+
+  timeLabel.textContent=minutesLabel(minutes);
+  document.getElementById('status').textContent='Loading…';
+
+  try{
+    const eventDate = document.getElementById('event-date')?.value || '';
+    const params=new URLSearchParams({
+      venue,crowd,minutes,ticket_price:effPx,event_type:evType,event_time:evTime,
+      artist_origin:artist,original_price:origPx,effective_price:effPx,out_of_city_pct:ooc,
+      special_train:sTrain,extended_metro:metro,shuttle_bus:shuttle,uber_zone:uber,
+      heavy_vehicle_ban:hvban,event_date:eventDate,layout:gateLayout,weather
+    });
+    const resp=await fetch('/api/predict?'+params.toString());
+    if(!resp.ok) throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+    lastData=data;
+
+    syncLayoutOptions(data);
+
+    clearLayers();
+    const coords=VENUE_COORDS[venue];
+    map.setView(coords,15);
+
+    // Venue footprint outline + entrance/exit markers (replaces the single pin)
+    renderVenueOutline(data, coords);
+
+    // ── Roads: OSM curved geometry (falls back to named corridors if OSM unavailable) ──
+    const usingOSM = data.all_roads && data.all_roads.length > 0;
+    // Only draw roads the EVENT actually affects. Roads beyond the venue's
+    // influence radius carry ordinary background traffic — outlining them
+    // implies the event causes congestion it does not, and buries the venue.
+    const roadsToRender = (usingOSM ? data.all_roads : data.corridors)
+      .filter(c => c.event_affected !== false);
+
+    roadsToRender.forEach(c=>{
+      const lls          = c.points.map(p=>[p[0],p[1]]);
+      const w            = c.weight || 2;
+      const isClosed     = !!c.live_closure;
+      const isJam        = !!c.live_jam;
+      const isDashed     = c.out_of_city;
+
+      // Glow halo — significant roads or any live event
+      if((w >= 4 && c.eci > 0.30) || isClosed || isJam){
+        const glowW   = isClosed ? w + 8 : w + 5;
+        const glowCol = isClosed ? '#ffffff' : c.colour;
+        const glowOp  = isClosed ? 0.25 : 0.11;
+        corridorLayers.push(
+          L.polyline(lls,{color:glowCol,weight:glowW,opacity:glowOp,interactive:false}).addTo(map)
+        );
+      }
+
+      // Main line
+      const baseOpacity = isClosed ? 1.0 : (w>=6?0.92 : w>=4?0.82 : w>=2?0.60 : 0.38);
+      const lineW       = isClosed ? w+2 : w;
+      const opts        = {color:c.colour, weight:lineW, opacity:baseOpacity};
+      if(isClosed)      opts.dashArray = '5 5';      // hatched = closed
+      else if(isJam)    opts.dashArray = '14 4';     // long dash = jam
+      else if(isDashed) opts.dashArray = '9 5';      // dotted = out-of-city
+      if(isClosed)      opts.className = 'leaflet-live-closure';
+
+      const line = L.polyline(lls, opts).addTo(map);
+      corridorLayers.push(line);
+      line.bindPopup(corridorPopup(c));
+
+      if(w >= 4 || isClosed || isJam){
+        line.on('mouseover', function(){ this.setStyle({weight:lineW+3, opacity:1}); });
+        line.on('mouseout',  function(){ this.setStyle({weight:lineW,   opacity:baseOpacity}); });
+      }
+    });
+
+    // ── Extended feeder corridors: the km-long queue on the approach highways ──
+    // Each feeder is drawn segment-by-segment so the jam fades with distance
+    // from the venue (Coastal Road / Sion-Panvel style long stretch).
+    (data.extended_feeders||[]).forEach(f=>{
+      f.segments.forEach(seg=>{
+        const lls=seg.points.map(p=>[p[0],p[1]]);
+        const hot=seg.eci>0.3;
+        if(hot){
+          corridorLayers.push(L.polyline(lls,{color:seg.colour,weight:11,opacity:0.10,interactive:false}).addTo(map));
+        }
+        const line=L.polyline(lls,{color:seg.colour,weight:hot?6:3,opacity:hot?0.85:0.35,dashArray:hot?null:'6 8'}).addTo(map);
+        corridorLayers.push(line);
+        line.bindPopup(`
+          <b style="font-size:12px;">🛣 ${f.road_name}</b><br>
+          <span style="font-size:11px;">
+          Queue stretch: <b style="color:${f.jam_km>5?'#E24B4A':f.jam_km>2?'#F97316':'#1D9E75'}">${f.jam_km} km</b> of ${f.total_km} km monitored<br>
+          This segment (~${seg.km_from_venue} km out): <b style="color:${seg.colour}">LOS ${seg.los_grade}</b> · ECI ${seg.eci}
+          </span>`);
+      });
+    });
+
+    // ── Live closure / jam markers ─────────────────────────────────────────────
+    (data.live_road_closures||[]).forEach(lc=>{
+      const icon = makeIcon('⛔','#7f1d1d',30);
+      const popup=`<div style="font-family:'Segoe UI',sans-serif;min-width:200px;line-height:1.6;">
+        <b style="color:#ef4444;font-size:13px;">🚨 LIVE ROAD CLOSURE</b><br>
+        <b>${lc.road_name}</b><br>
+        <span style="color:#aaa;">${lc.description}</span><br>
+        <small style="color:#666;">Source: Waze live · ${data.live_data_time||''}</small></div>`;
+      markerLayers.push(L.marker([lc.lat,lc.lng],{icon,zIndexOffset:1000}).addTo(map).bindPopup(popup));
+    });
+
+    // ── Deployment indicators ─────────────────────────────────────────────────
+    data.deployment_indicators.forEach(ind=>{
+      let icon,popup;
+      switch(ind.type){
+        case 'police':     icon=makeIcon('👮','#7f1d1d'); popup=policePopup(ind);     break;
+        case 'barricade':  icon=makeIcon('🚧','#7c2d12'); popup=barricadePopup(ind);  break;
+        case 'diversion':  icon=makeIcon('🔀','#1e3a8a'); popup=diversionPopup(ind);  break;
+        case 'parking':    return;   // superseded by the parking_pickup layer
+        case 'pedestrian': icon=makeIcon('🚉','#065f46'); popup=pedestrianPopup(ind); break;
+        default: return;
+      }
+      markerLayers.push(L.marker([ind.lat,ind.lng],{icon}).addTo(map).bindPopup(popup));
+    });
+
+    // ── Info panel ────────────────────────────────────────────────────────────
+    const split=data.transport_split;
+    const cp=data.crowd_profile;
+    const losC=LOS_COLOURS[data.los_grade]||'#aaa';
+    const aug=data.transit_augmentation;
+
+    document.getElementById('ip-venue').textContent=`${data.venue} · ${data.event_type}`;
+    const eciEl=document.getElementById('ip-eci');
+    eciEl.textContent=data.worst_eci.toFixed(2); eciEl.style.color=losC;
+    const losBadge=document.getElementById('ip-los');
+    losBadge.textContent=`LOS ${data.los_grade}`;
+    losBadge.style.background=losC+'28'; losBadge.style.color=losC;
+    losBadge.title=LOS_NAMES[data.los_grade]||'';
+
+    document.getElementById('ip-transport').textContent=
+      `🚶 ${pct(split.foot_auto)}%  🚂 ${pct(split.train_metro)}%  🚗 ${pct(split.car_cab)}%`;
+    document.getElementById('ip-corridor').textContent=data.worst_corridor;
+    document.getElementById('ip-peak').textContent=data.predicted_peak_time;
+    document.getElementById('ip-clearance').textContent=data.clearance_time;
+    document.getElementById('ip-carmult').textContent=`×${data.car_multiplier}`;
+    const hm2 = data.historical_model || {};
+    document.getElementById('ip-hist').textContent = data.past_events_used > 0
+      ? `${hm2.learning_confidence||'low'} confidence · ${data.past_events_used} past ${data.event_type} events · ${hm2.day_of_week||'—'}`
+      : 'No matching history — default baseline applied';
+
+    // Crowd profile
+    const cpBox=document.getElementById('ip-crowd-profile');
+    if(cp&&cp.resale_signal!=='unknown'){
+      const em=RESALE_EMOJIS[cp.resale_signal]||'⚪';
+      const oocNote=cp.out_of_city_pct>10?` · ${cp.out_of_city_pct}% out-of-city`:'';
+      cpBox.style.display='block';
+      cpBox.textContent=`${em} ${cp.resale_label}${oocNote}`;
+      cpBox.style.color=RESALE_COLOURS[cp.resale_signal]||'#a5b4fc';
+    } else { cpBox.style.display='none'; }
+
+    // Transit augmentation summary
+    const augBox=document.getElementById('ip-aug-active');
+    if(aug&&aug.summary){
+      augBox.style.display='block'; augBox.textContent=aug.summary;
+      document.getElementById('aug-summary').textContent=aug.summary;
+    } else {
+      augBox.style.display='none';
+      document.getElementById('aug-summary').textContent='';
+    }
+
+    // Disruption badge
+    const dispBox=document.getElementById('ip-disruption-box');
+    if(data.active_disruptions>0&&data.disruptions_detail?.length>0){
+      dispBox.style.display='block';
+      dispBox.textContent=`⚠ ${data.active_disruptions} disruption — ${data.disruptions_detail[0].description}`;
+    } else { dispBox.style.display='none'; }
+
+    const banner=document.getElementById('disruption-banner');
+    if(data.active_disruptions>0){
+      banner.style.display='block';
+      banner.textContent=`⚠ ${data.active_disruptions} active disruption near ${data.venue}`;
+    } else { banner.style.display='none'; }
+
+    document.getElementById('header-sub').textContent=
+      `${data.venue} · ${parseInt(crowd).toLocaleString()} crowd · ${minutesLabel(minutes)} · ${data.los_grade} worst LOS`;
+    const roadCountLabel = usingOSM
+      ? `${data.osm_road_count} OSM roads`
+      : `${data.corridors.length} corridors`;
+
+    // Live badge
+    const liveBadge = document.getElementById('live-badge');
+    const liveUpd   = document.getElementById('live-updated');
+    const nClosures = (data.live_road_closures||[]).length;
+    const nJams     = data.live_jams_applied||0;
+    if(data.live_data_time) liveUpd.textContent = `as of ${data.live_data_time}`;
+    if(nClosures > 0 || nJams > 0){
+      liveBadge.textContent = `⚡ ${nClosures} closure${nClosures!==1?'s':''} · ${nJams} jam${nJams!==1?'s':''}`;
+      liveBadge.className   = 'has-alerts';
+    } else {
+      liveBadge.textContent = data.live_alerts_count===0 ? '🟢 Live: clear' : '🟡 Live: monitoring';
+      liveBadge.className   = '';
+    }
+
+    const liveNote = nClosures>0 ? ` · 🚨 ${nClosures} live closure` : (nJams>0 ? ` · ⚡ ${nJams} live jam` : '');
+    document.getElementById('status').textContent=
+      `${roadCountLabel} · ${data.deployment_indicators.length} indicators${liveNote}`;
+
+    // Auto-save report after every successful prediction
+    autoSaveReport(data);
+
+    // Update historical learning panel
+    updateHistoricalPanel(data);
+
+    // Overlays per active view
+    if(currentView==='foot'){
+      renderFootTraffic(data);
+    } else if(currentView==='staff'){
+      renderStaffOps(data);
+    } else {
+      renderGateTypeMarkers(data);
+      renderParkingPickup(data);
+    }
+    updateParkingPanel(data);
+
+  }catch(err){
+    console.error(err);
+    document.getElementById('status').textContent='⚠ Error — is app.py running?';
+  }
+}
+
+function pct(f){ return Math.round(f*100); }
+
+// ── Historical learning panel ─────────────────────────────────────────────────
+let _histPanelOpen = false;
+
+function toggleHistPanel(){
+  _histPanelOpen = !_histPanelOpen;
+  document.getElementById('ip-hist-body').style.display  = _histPanelOpen ? 'block' : 'none';
+  document.getElementById('ip-hist-arrow').textContent   = _histPanelOpen ? '▾' : '▸';
+}
+
+function _bgLabel(eci){
+  if(eci >= 0.80) return '🔴 Critical';
+  if(eci >= 0.65) return '🟠 High';
+  if(eci >= 0.45) return '🟡 Moderate';
+  return '🟢 Low';
+}
+
+function updateHistoricalPanel(data){
+  const hm = data.historical_model;
+  if(!hm) return;
+
+  // ── Confidence badge ───────────────────────────────────────────────────────
+  const conf = hm.learning_confidence || 'low';
+  const confColour = { high:'#1D9E75', medium:'#EAB308', low:'#E24B4A' };
+  const confEmoji  = { high:'🟢', medium:'🟡', low:'🔴' };
+  const badge = document.getElementById('ip-hist-conf-badge');
+  badge.textContent = `${confEmoji[conf]||'⚪'} ${conf} · ${hm.past_events_count||0} events`;
+  badge.style.color = confColour[conf] || '#777';
+
+  // ── Meta line: day-of-week + hourly background ─────────────────────────────
+  const dowMult = (hm.dow_multiplier || 1.18).toFixed(2);
+  const bgLbl   = _bgLabel(hm.background_eci || 0);
+  document.getElementById('ip-hist-meta').textContent =
+    `📅 ${hm.day_of_week||'—'} ×${dowMult}  ·  ⏰ ${hm.event_hour||'?'}:00 background: ${bgLbl}`;
+
+  // ── Similar past events ────────────────────────────────────────────────────
+  const se    = hm.similar_events || [];
+  const simLbl = document.getElementById('ip-hist-similar-label');
+  simLbl.style.display = se.length ? 'block' : 'none';
+  document.getElementById('ip-hist-similar').innerHTML = se.map(e => {
+    const sev = e.severity_score;
+    const sevCol = sev >= 0.85 ? '#E24B4A' : sev >= 0.70 ? '#EAB308' : '#84CC16';
+    const worstStr = (e.worst_corridors||[]).slice(0,2).join(', ');
+    return `<div class="hist-sim-item">
+      <div class="hist-sim-name">${e.event_name}</div>
+      <div class="hist-sim-meta">${e.date} · ${e.day_of_week} · ${e.weather}</div>
+      ${worstStr?`<div class="hist-sim-meta">↳ ${worstStr}</div>`:''}
+      <div class="hist-sim-sev" style="color:${sevCol}">Severity: ${sev}</div>
+    </div>`;
+  }).join('');
+
+  // ── Corridor baseline table ────────────────────────────────────────────────
+  const cb = hm.corridor_baselines || {};
+  const entries = Object.entries(cb);
+  const tblLbl = document.getElementById('ip-hist-tbl-label');
+  tblLbl.style.display = entries.length ? 'block' : 'none';
+  if(entries.length){
+    const rows = entries.map(([name, d]) => {
+      const meanCol = d.mean >= 0.80 ? '#E24B4A' : d.mean >= 0.65 ? '#F97316' : '#EAB308';
+      const p90Col  = d.p90  >= 0.90 ? '#7F1D1D' : d.p90  >= 0.75 ? '#E24B4A' : '#F97316';
+      return `<tr>
+        <td style="color:#ccc;max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"
+            title="${name}">${name}</td>
+        <td style="color:${meanCol};text-align:right;font-weight:700;">${d.mean?.toFixed(3)??'—'}</td>
+        <td style="color:${p90Col};text-align:right;">${d.p90?.toFixed(3)??'—'}</td>
+        <td style="color:#555;text-align:right;">${d.events??'—'}</td>
+      </tr>`;
+    }).join('');
+    document.getElementById('ip-hist-table-wrap').innerHTML =
+      `<table class="hist-tbl">
+        <thead><tr>
+          <th>Corridor</th>
+          <th style="text-align:right;">Mean</th>
+          <th style="text-align:right;">P90</th>
+          <th style="text-align:right;">#</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+  }
+}
+
+// ── Refresh disruptions (live endpoint) ───────────────────────────────────────
+async function refreshDisruptions(){
+  const venue=document.getElementById('venue-select').value;
+  document.getElementById('status').textContent='Fetching live disruptions…';
+  try{
+    const r=await fetch(`/api/disruptions/live?venue=${venue}`);
+    const d=await r.json();
+    const total=d.total||0;
+    const wErr=d.waze_error?` (Waze: ${d.waze_error})`:'';
+    document.getElementById('status').textContent=
+      `Disruptions: ${total} active${wErr}`;
+
+    // Add live disruption markers to map
+    (d.live_disruptions||[]).forEach(w=>{
+      const icon=makeIcon('⚠️','#92400e',28);
+      const popup=`<div style="font-family:'Segoe UI',sans-serif;min-width:180px;line-height:1.5;">
+        <b>⚠ Waze Alert</b><br><span style="color:#EAB308;">${w.type.replace(/_/g,' ')}</span><br>
+        📍 ${w.street}<br>${w.description}<br><small>Source: Waze Live</small></div>`;
+      markerLayers.push(L.marker([w.lat,w.lng],{icon}).addTo(map).bindPopup(popup));
+    });
+  }catch(e){
+    document.getElementById('status').textContent='Disruption fetch failed';
+  }
+}
+
+// ── Auto-research ─────────────────────────────────────────────────────────────
+async function runResearch(){
+  const q=document.getElementById('research-input').value.trim();
+  const d=document.getElementById('research-date').value;
+  const venue=document.getElementById('venue-select').value;
+  if(!q){ alert('Enter an event name to research.'); return; }
+
+  const statusEl=document.getElementById('research-status');
+  const panel=document.getElementById('research-panel');
+  const content=document.getElementById('rp-content');
+
+  statusEl.innerHTML='<span class="spinner"></span> Researching event…';
+  panel.style.display='none';
+
+  try{
+    const params=new URLSearchParams({event:q,venue});
+    if(d) params.set('date',d);
+    const r=await fetch('/api/research?'+params.toString());
+    const result=await r.json();
+
+    if(!result.success){
+      statusEl.textContent='⚠ '+result.error;
+      return;
+    }
+
+    researchResult=result.data;
+    const rd=result.data;
+
+    // Escape LLM/web-derived strings before innerHTML — the research model reads
+    // arbitrary web pages, so any free-text field could carry hostile HTML.
+    const esc=s=>String(s??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+    // Build result HTML
+    const confCol=result.confidence==='high'?'#1D9E75':result.confidence==='medium'?'#EAB308':'#f97316';
+    const resaleColor=rd.resale_signal?RESALE_COLOURS[rd.resale_signal]||'#aaa':'#aaa';
+    const resaleEm=rd.resale_signal?RESALE_EMOJIS[rd.resale_signal]||'⚪':'⚪';
+
+    content.innerHTML=`
+      <div>
+        <div class="rp-title">📡 ${esc(rd.event_name||q)}</div>
+        ${rd.venue?`<div class="rp-row" style="color:#a5b4fc;"><b>Venue detected:</b> ${esc(rd.venue)}${rd.venue!==venue?' <span style="color:#EAB308;">(will switch from current)</span>':''}</div>`:''}
+        ${(rd.event_type||rd.event_date||rd.event_time)?`<div class="rp-row" style="color:#a5b4fc;">
+          ${rd.event_type?`<b>Type:</b> ${esc(rd.event_type)} `:''}
+          ${rd.event_date?`· <b>Date:</b> ${esc(rd.event_date)} `:''}
+          ${rd.event_time?`· <b>Start:</b> ${esc(rd.event_time)}`:''}
+        </div>`:''}
+        <div class="rp-row"><b>Artist:</b> ${esc((rd.artist_origin||'—').replace(/_/g,' '))}
+          · <b>Crowd:</b> ${rd.expected_crowd?.toLocaleString()||'—'}
+          · <b>Face:</b> ₹${rd.face_value_ticket_avg?.toLocaleString()||'—'}
+          ${rd.resale_ticket_avg?`· <b>Resale:</b> ₹${rd.resale_ticket_avg.toLocaleString()}`:''}
+        </div>
+        ${rd.resale_evidence?`<div class="rp-row" style="font-size:10px;color:#888;font-style:italic;">↳ ${esc(rd.resale_evidence)}</div>`:''}
+        ${rd.resale_signal&&rd.resale_signal!=='unknown'?
+          `<div style="color:${resaleColor};font-size:10px;margin-top:2px;">
+            ${resaleEm} ${esc((rd.resale_signal||'').replace(/_/g,' '))} (${esc(rd.resale_ratio||'?')}×)
+          </div>`:''}
+        <div class="rp-row" style="margin-top:3px;">${esc(rd.notes||'')}</div>
+        <div class="rp-override">Values auto-filled below. Override any field if you have better data.</div>
+      </div>
+      <div>
+        <div class="rp-row"><b>Transit:</b>
+          ${rd.transit_augmentation?.special_train?'🚂 Special train':''}
+          ${rd.transit_augmentation?.extended_metro?'🚇 Extended metro':''}
+          ${rd.transit_augmentation?.shuttle_bus?'🚌 Shuttle':''}
+          ${rd.transit_augmentation?.uber_zone?'📍 Uber zone':''}
+          ${rd.transit_augmentation?.heavy_vehicle_ban?'🚫 HV ban':''}
+          ${!Object.values(rd.transit_augmentation||{}).some(Boolean)?'None confirmed':''}
+        </div>
+        ${rd.weather_forecast?`<div class="rp-row">🌤 ${esc(rd.weather_forecast)}</div>`:''}
+        <div style="margin-top:4px;">
+          <span class="rp-pill" style="background:${confCol}22;color:${confCol};">
+            Confidence: ${result.confidence}
+          </span>
+          ${result.cached?`<span class="rp-pill" style="background:#1f293722;color:#94a3b8;margin-left:6px;">
+            🗄 Cached · ${Math.round((result.cache_age_s||0)/60)} min old
+          </span>`:''}
+        </div>
+      </div>
+      <button class="btn-apply" onclick="applyResearch()">Apply to prediction</button>`;
+
+    panel.style.display='block';
+    statusEl.textContent='';
+  }catch(e){
+    statusEl.textContent='⚠ Research failed: '+e.message;
+  }
+}
+
+function applyResearch(){
+  if(!researchResult) return;
+  const rd=researchResult;
+  // Switch venue first so all downstream fields & the final refresh() use the right one.
+  if(rd.venue){
+    const vs=document.getElementById('venue-select');
+    for(let i=0;i<vs.options.length;i++){
+      if(vs.options[i].value===rd.venue){
+        if(vs.selectedIndex!==i){
+          vs.selectedIndex=i;
+          vs.dispatchEvent(new Event('change'));  // resets layout dropdown, queues a refresh
+        }
+        break;
+      }
+    }
+  }
+  if(rd.event_type){
+    const ts=document.getElementById('event-type-select');
+    for(let i=0;i<ts.options.length;i++) if(ts.options[i].value===rd.event_type){ ts.selectedIndex=i; break; }
+  }
+  if(rd.event_date && /^\d{4}-\d{2}-\d{2}$/.test(rd.event_date)){
+    document.getElementById('event-date').value = rd.event_date;
+  }
+  if(rd.event_time && /^\d{1,2}:\d{2}$/.test(rd.event_time)){
+    document.getElementById('event-time').value = rd.event_time;
+  }
+  if(rd.weather_forecast){
+    const wf=String(rd.weather_forecast).toLowerCase();
+    const ws=document.getElementById('weather-select');
+    if(ws){
+      if(/heavy rain|monsoon|thunderstorm|downpour|cyclone/.test(wf)) ws.value='heavy_rain';
+      else if(/rain|shower|drizzle|wet/.test(wf)) ws.value='light_rain';
+      else ws.value='clear';
+    }
+  }
+  if(rd.artist_origin){
+    const sel=document.getElementById('artist-origin');
+    for(let i=0;i<sel.options.length;i++) if(sel.options[i].value===rd.artist_origin){ sel.selectedIndex=i; break; }
+  }
+  if(rd.expected_crowd){
+    // Crowd input is now a free number field — just set the value directly,
+    // clamped to the input's [min,max] range.
+    const cs=document.getElementById('crowd-select');
+    const v=Math.max(100, Math.min(120000, Math.round(rd.expected_crowd)));
+    cs.value=v;
+    cs.dispatchEvent(new Event('change'));   // ensure listeners (scheduleRefresh) fire
+  }
+  if(rd.face_value_ticket_avg) document.getElementById('original-price').value=Math.round(rd.face_value_ticket_avg);
+  if(rd.resale_ticket_avg)     document.getElementById('effective-price').value=Math.round(rd.resale_ticket_avg);
+  else if(rd.face_value_ticket_avg) document.getElementById('effective-price').value=Math.round(rd.face_value_ticket_avg);
+  if(rd.out_of_city_percentage) oocSlider.value=Math.min(40,rd.out_of_city_percentage);
+
+  const aug=rd.transit_augmentation||{};
+  document.getElementById('aug-special-train').checked=!!aug.special_train;
+  document.getElementById('aug-metro').checked=!!aug.extended_metro;
+  document.getElementById('aug-shuttle').checked=!!aug.shuttle_bus;
+  document.getElementById('aug-uber').checked=!!aug.uber_zone;
+  document.getElementById('aug-hvban').checked=!!aug.heavy_vehicle_ban;
+
+  updateResaleBadge();
+  oocSlider.dispatchEvent(new Event('input'));
+  refresh();
+}
+
+// ── Export Report (professional PDF) ──────────────────────────────────────────
+function exportReport(){
+  if(!lastData){ alert('Run a prediction first.'); return; }
+  const d=lastData;
+  const crowd=parseInt(document.getElementById('crowd-select').value);
+  const evTime=document.getElementById('event-time').value;
+  const evDate=document.getElementById('research-date').value||new Date().toLocaleDateString('en-IN');
+  const timeVal=minutesLabel(slider.value);
+  const now=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+  const split=d.transport_split;
+  const cp=d.crowd_profile;
+  const aug=d.transit_augmentation;
+
+  // ── Helpers for print ──────────────────────────────────────────────────────
+  const losGradient=(pct,color)=>
+    `<div style="height:8px;background:${color};border-radius:2px;"></div>`;
+
+  const transportBar=`
+    <div style="display:flex;height:20px;border-radius:4px;overflow:hidden;margin:6px 0;">
+      <div style="width:${pct(split.foot_auto)}%;background:#6b7280;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">🚶</div>
+      <div style="width:${pct(split.train_metro)}%;background:#2563eb;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">🚂</div>
+      <div style="width:${pct(split.car_cab)}%;background:#dc2626;display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;">🚗</div>
+    </div>
+    <div style="display:flex;gap:16px;font-size:11px;color:#555;">
+      <span>🚶 Walk/Auto: ${pct(split.foot_auto)}% (${Math.round(split.foot_auto*crowd).toLocaleString()})</span>
+      <span>🚂 Train/Metro: ${pct(split.train_metro)}% (${Math.round(split.train_metro*crowd).toLocaleString()})</span>
+      <span>🚗 Car/Cab: ${pct(split.car_cab)}% (${Math.round(split.car_cab*crowd).toLocaleString()})</span>
+    </div>`;
+
+  const corridorRows=d.corridors.filter(c=>!c.out_of_city).map(c=>`
+    <tr>
+      <td>${c.road_name}</td><td style="color:${c.colour};font-weight:700;text-align:center;">${c.los_grade}</td>
+      <td style="text-align:center;">${c.eci.toFixed(3)}</td>
+      <td style="text-align:center;">${c.predicted_speed_kmph} km/h</td>
+      <td style="text-align:center;">${c.vehicles_per_hour.toLocaleString()}/hr</td>
+      <td style="text-align:center;">${evTime?addMins(evTime,-30):'T-30'}</td>
+      <td style="text-align:center;">${c.clearance_minutes} min</td>
+    </tr>`).join('');
+
+  const deployItems=d.deployment_indicators.map((ind,i)=>{
+    let reason='',action='';
+    if(ind.type==='police'){
+      reason=`ECI ${(d.corridors.find(c=>c.road_name===ind.location_name)||{eci:0.6}).eci||'≥0.6'} predicted nearby`;
+      action=ind.recommendation;
+    } else if(ind.type==='barricade'){
+      reason='V/C ratio exceeds 0.9 on this segment';
+      action=`${ind.barricade_type||'Lane restriction'} — ${ind.restrict_lanes||''}. Alt: ${ind.alternative_route||'—'}`;
+    } else if(ind.type==='diversion'){
+      reason=`Primary corridor ECI ≥ 0.75`;
+      action=`Activate diversion via ${ind.diversion_via||'—'} by ${ind.activation||'—'}`;
+    } else if(ind.type==='parking'){
+      reason='Predicted overflow exceeds 70% of venue capacity';
+      action=`Open ${ind.location_name} by ${ind.open_by||'—'} · ${ind.walk_distance||'—'}`;
+    } else if(ind.type==='pedestrian'){
+      reason='Special train service active';
+      action=ind.note||'High pedestrian flow expected at this station';
+    }
+    return `<li style="margin-bottom:10px;">
+      <strong>${(ind.type||'').toUpperCase()}: ${ind.location_name}</strong>
+      ${ind.deploy_by?`— by <b>${ind.deploy_by}</b>`:''}
+      ${ind.personnel?`· <b>${ind.personnel}</b>`:''}
+      <br><span style="color:#555;">Reason: ${reason}</span>
+      <br><span style="color:#333;">Action: ${action}</span>
+    </li>`;
+  }).join('');
+
+  const histTable=(()=>{
+    // Find top 3 similar events
+    return ''; // History not in API response — show baseline note
+  })();
+
+  const disruptHtml=(d.disruptions_detail||[]).length>0
+    ?(d.disruptions_detail).map(dis=>`<li>${dis.description} — Severity: ${dis.severity} (${dis.affected_corridor||'corridor'})</li>`).join('')
+    :'<li>No active disruptions at time of prediction</li>';
+
+  const augHtml=aug&&aug.active_names?.length>0
+    ?`<p>Active measures: <b>${aug.active_names.join(', ')}</b> — estimated road traffic reduction: <b>${aug.road_reduction_pct}%</b></p>`
+    :'<p>No transit augmentation active for this prediction.</p>';
+
+  // Crowd profile note
+  const cpNote=cp&&cp.resale_label?`<p style="margin-top:4px;"><i>${cp.resale_label}</i></p>`:'';
+  const oocNote=cp&&cp.out_of_city_pct>10?`<p style="margin-top:4px;color:#555;">Est. ${cp.out_of_city_pct}% of attendees travelling from outside Mumbai — additional corridor pressure from airport/highway routes.</p>`:'';
+
+  // Risk level
+  const eci=d.worst_eci;
+  const risk=eci>=0.9?'CRITICAL':eci>=0.75?'HIGH':eci>=0.55?'MEDIUM':'LOW';
+  const riskCol=eci>=0.9?'#7f1d1d':eci>=0.75?'#dc2626':eci>=0.55?'#d97706':'#15803d';
+
+  // Plain English summary
+  const losWord={'A':'very light','B':'light','C':'moderate','D':'heavy','E':'severe','F':'gridlock'}[d.los_grade]||'significant';
+  const summary=`Predicted ${losWord} congestion on <b>${d.worst_corridor}</b> reaching Level of Service ${d.los_grade} around ${d.predicted_peak_time}. Traffic expected to fully clear by approximately ${d.clearance_time}. ${aug?.active_names?.length>0?`Transit augmentation measures (${aug.active_names.join(', ')}) are active and estimated to reduce road traffic by ${aug.road_reduction_pct}%.`:'No transit augmentation measures are active.'}`;
+
+  const html=`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Traffic Management Plan — ${d.venue}</title>
+  <style>
+    @page { size:A4; margin:20mm 18mm 22mm 18mm; }
+    *{box-sizing:border-box;}
+    body{font-family:Arial,sans-serif;color:#111;font-size:12px;line-height:1.5;background:#fff;}
+    .no-print{margin-bottom:14px;}
+    @media print{.no-print{display:none;}}
+    .page-header{display:flex;justify-content:space-between;align-items:flex-start;
+                 border-bottom:3px solid #111;padding-bottom:12px;margin-bottom:16px;}
+    .logo-box{width:80px;height:50px;background:#f0f0f0;border:1px solid #ccc;
+              display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;border-radius:3px;}
+    .doc-title h1{font-size:18px;margin:0;font-weight:900;letter-spacing:.01em;}
+    .doc-title .sub{font-size:11px;color:#555;margin-top:2px;}
+    .confidential{font-size:10px;font-weight:700;color:#dc2626;border:1px solid #dc2626;
+                  padding:2px 8px;border-radius:3px;}
+    h2{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+       border-bottom:2px solid #E24B4A;padding-bottom:4px;margin:18px 0 8px;}
+    .kpi-grid{display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:12px;}
+    .kpi{flex:1;padding:8px 12px;border-right:1px solid #ddd;}
+    .kpi:last-child{border-right:none;}
+    .kpi .k{font-size:8px;text-transform:uppercase;color:#999;letter-spacing:.06em;margin-bottom:2px;}
+    .kpi .v{font-size:18px;font-weight:900;}
+    .kpi .s{font-size:9px;color:#777;margin-top:1px;}
+    .risk-badge{display:inline-block;padding:3px 10px;border-radius:3px;font-weight:700;
+                font-size:12px;color:#fff;background:${riskCol};}
+    table{width:100%;border-collapse:collapse;font-size:11px;margin-bottom:10px;}
+    th{background:#f5f5f5;text-align:left;padding:6px 8px;border-bottom:2px solid #ddd;
+       font-size:10px;text-transform:uppercase;letter-spacing:.04em;}
+    td{padding:5px 8px;border-bottom:1px solid #eee;vertical-align:top;}
+    ol,ul{padding-left:18px;}
+    li{margin-bottom:5px;}
+    .advisory{background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:10px 14px;
+              font-size:11px;line-height:1.6;}
+    .sign-block{display:flex;gap:40px;margin-top:40px;}
+    .sign-line{border-top:1px solid #888;padding-top:5px;font-size:10px;color:#666;width:200px;}
+    .footer{text-align:center;font-size:9px;color:#aaa;margin-top:30px;padding-top:10px;border-top:1px solid #eee;}
+    .page-num::after{content:counter(page);}
+    body{counter-reset:page;}
+  </style>
+</head>
+<body>
+  <div class="no-print">
+    <button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:8px 20px;border-radius:4px;font-size:13px;cursor:pointer;">🖨 Print / Save as PDF</button>
+    <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-size:13px;cursor:pointer;margin-left:8px;">✕ Close</button>
+  </div>
+
+  <div class="page-header">
+    <div style="display:flex;gap:14px;align-items:flex-start;">
+      <div class="logo-box">EventTraffic<br>Platform</div>
+      <div class="doc-title">
+        <h1>PRE-EVENT TRAFFIC MANAGEMENT PLAN</h1>
+        <div class="sub">Prepared by EventTraffic Platform · For official use only · Mumbai Traffic Police</div>
+        <div class="sub" style="margin-top:3px;">
+          <b>Ref:</b> ${(d.venue||'').replace(/[^a-zA-Z]/g,'-')}-${evDate}-${(d.event_type||'event').toUpperCase()} &nbsp;
+          <b>Generated:</b> ${now}
+        </div>
+      </div>
+    </div>
+    <div class="confidential">CONFIDENTIAL</div>
+  </div>
+
+  <h2>Event Details</h2>
+  <table style="width:auto;margin-bottom:14px;">
+    <tr><td style="font-weight:700;width:150px;padding:3px 8px 3px 0;">Venue</td><td>${d.venue} · ${VENUES_ADDRESSES[document.getElementById('venue-select').value]||''}</td></tr>
+    <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Event Type</td><td>${(d.event_type||'').charAt(0).toUpperCase()+(d.event_type||'').slice(1)} · ${(d.artist_origin||'').replace(/_/g,' ')}</td></tr>
+    <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Date / Start Time</td><td>${evDate} at ${evTime}</td></tr>
+    <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Expected Attendance</td><td>${crowd.toLocaleString()}</td></tr>
+    <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Ticket Price</td><td>Face value ₹${d.original_ticket_price?.toLocaleString()||'—'} · Effective ₹${d.ticket_price?.toLocaleString()||'—'}${d.resale_info?.label?' · '+d.resale_info.label:''}</td></tr>
+  </table>
+
+  <h2>Executive Summary</h2>
+  <div class="kpi-grid">
+    <div class="kpi"><div class="k">Worst LOS</div><div class="v" style="color:${LOS_COLOURS[d.los_grade]||'#111'}">${d.los_grade}</div><div class="s">${d.worst_corridor}</div></div>
+    <div class="kpi"><div class="k">ECI Score</div><div class="v">${d.worst_eci?.toFixed(3)||'—'}</div><div class="s">Event Congestion Index</div></div>
+    <div class="kpi"><div class="k">Predicted Peak</div><div class="v">${d.predicted_peak_time||'—'}</div><div class="s">30 min before event</div></div>
+    <div class="kpi"><div class="k">Est. Clearance</div><div class="v">${d.clearance_time||'—'}</div><div class="s">Worst corridor</div></div>
+    <div class="kpi"><div class="k">Risk Level</div><div class="v" style="font-size:13px;"><span class="risk-badge">${risk}</span></div></div>
+  </div>
+  <p>${summary}</p>
+  <p style="margin-top:6px;">Historical baseline ECI: <b>${d.historical_baseline||'0.70'}</b> (from <b>${d.past_events_used||0}</b> comparable past events). Final ECI = 60% formula + 40% historical.</p>
+
+  <h2>Transport Breakdown</h2>
+  ${transportBar}
+  ${cpNote}${oocNote}
+  <p style="margin-top:5px;font-size:11px;color:#555;">Car multiplier vs venue baseline: ×${d.car_multiplier||1} · Effective ticket price ₹${d.ticket_price?.toLocaleString()||'—'}</p>
+  ${augHtml}
+
+  <h2>Corridor Status</h2>
+  <table>
+    <thead><tr><th>Road / Corridor</th><th style="text-align:center;">LOS</th><th style="text-align:center;">ECI</th><th style="text-align:center;">Speed</th><th style="text-align:center;">Volume</th><th style="text-align:center;">Peak Time</th><th style="text-align:center;">Clearance</th></tr></thead>
+    <tbody>${corridorRows}</tbody>
+  </table>
+
+  <h2>Deployment Instructions</h2>
+  <ol>${deployItems||'<li>No deployments triggered at current parameters.</li>'}</ol>
+
+  <h2>Active Road Disruptions</h2>
+  <ul>${disruptHtml}</ul>
+
+  <h2>Historical Comparison</h2>
+  <p>Prediction blends formula output with historical baseline (<b>${d.historical_baseline}</b>) derived from <b>${d.past_events_used}</b> past ${d.event_type} events at this venue.
+  ${d.past_events_used===0?'No matching events found — default baseline of 0.70 applied.':''}</p>
+
+  <h2>Attendee Advisory <span style="font-weight:400;font-size:10px;color:#888;">(for venue to share with ticket holders)</span></h2>
+  <div class="advisory">
+    To avoid peak congestion, arrive <b>before ${d.predicted_peak_time?addMins(d.predicted_peak_time,-45):evTime}</b> or after <b>${d.clearance_time||'23:00'}</b>.
+    <br>Best transport options: ${pct(split.train_metro)>35?'Train/Metro (recommended) · ':''}${pct(split.car_cab)>40?'Cab/Uber ·':''} Auto-rickshaw for last-mile.
+    ${aug?.active_names?.length>0?`<br>Special transport: ${aug.active_names.join(' · ')}.`:''}
+    <br>Parking available at venue ${VENUES_PARKING[document.getElementById('venue-select').value]||''} vehicles. Allow 90 min for exit.
+  </div>
+
+  <div class="sign-block">
+    <div><div class="sign-line">Traffic Inspector (Name &amp; Rank)</div></div>
+    <div><div class="sign-line">DCP Traffic (Signature &amp; Date)</div></div>
+    <div><div class="sign-line">Event Organiser Representative</div></div>
+  </div>
+
+  <div class="footer">
+    EventTraffic Platform · Mumbai Traffic Management · CONFIDENTIAL · Page <span class="page-num"></span>
+  </div>
+</body>
+</html>`;
+
+  const win=window.open('','_blank');
+  win.document.write(html);
+  win.document.close();
+}
+
+// ── THOROUGH PDF REPORT ───────────────────────────────────────────────────────
+// Captures the live Leaflet map at 5 event-relative time points (T-3h, T-1h,
+// T-30m, +30m, +1h) and builds a multi-page HTML report with all five maps
+// plus full data tables. Opens in a new tab → "Print → Save as PDF".
+
+async function exportThoroughReport(){
+  if(!lastData){ alert('Run a prediction first.'); return; }
+  if(typeof html2canvas!=='function'){ alert('Map-capture library not loaded — hard-refresh the page (Ctrl+Shift+R).'); return; }
+
+  const statusEl=document.getElementById('status');
+  const originalMinutes=slider.value;
+  const originalView=currentView;
+  if(originalView!=='vehicular') setView('vehicular');
+
+  const phases=[
+    {minutes:180, label:'T − 3 hours', sub:'Pre-event setup window'},
+    {minutes:60,  label:'T − 1 hour',  sub:'Arrival ramp begins'},
+    {minutes:30,  label:'T − 30 min',  sub:'Peak ingress crush'},
+    {minutes:-30, label:'+ 30 min',    sub:'Peak egress surge'},
+    {minutes:-60, label:'+ 1 hour',    sub:'Dispersal & clearance'},
+  ];
+
+  const snapshots=[];
+  for(let i=0;i<phases.length;i++){
+    const p=phases[i];
+    statusEl.textContent=`📸 Capturing ${p.label} (${i+1}/${phases.length})…`;
+    slider.value=p.minutes;
+    timeLabel.textContent=minutesLabel(p.minutes);
+    await refresh();
+    await new Promise(r=>setTimeout(r,750));   // let tiles + Leaflet settle
+    let dataUrl=null;
+    try{
+      const canvas=await html2canvas(document.getElementById('map'),{
+        useCORS:true, allowTaint:true, logging:false, backgroundColor:'#0e0e0e',
+      });
+      dataUrl=canvas.toDataURL('image/png',0.85);
+    }catch(err){ console.warn('Capture failed @',p.label,err); }
+    snapshots.push({...p, dataUrl, data: JSON.parse(JSON.stringify(lastData))});
+  }
+
+  // Restore everything
+  slider.value=originalMinutes;
+  timeLabel.textContent=minutesLabel(originalMinutes);
+  await refresh();
+  if(originalView!=='vehicular') setView(originalView);
+  statusEl.textContent='📋 Thorough report ready';
+
+  const html=buildThoroughReportHTML(snapshots);
+  const win=window.open('','_blank');
+  if(!win){ alert('Pop-up blocked — allow pop-ups for this site to open the report.'); return; }
+  win.document.write(html);
+  win.document.close();
+}
+
+function buildThoroughReportHTML(snapshots){
+  const d=lastData;
+  const venueKey=document.getElementById('venue-select').value;
+  const evType=document.getElementById('event-type-select').value;
+  const crowd=parseInt(document.getElementById('crowd-select').value);
+  const evDate=document.getElementById('event-date').value||new Date().toISOString().slice(0,10);
+  const evTime=document.getElementById('event-time').value;
+  const artist=document.getElementById('artist-origin').value;
+  const now=new Date().toLocaleString('en-IN',{timeZone:'Asia/Kolkata'});
+  const split=d.transport_split;
+  const cp=d.crowd_profile;
+  const aug=d.transit_augmentation;
+  const eci=d.worst_eci;
+  const risk=eci>=0.9?'CRITICAL':eci>=0.75?'HIGH':eci>=0.55?'MEDIUM':'LOW';
+  const riskCol=eci>=0.9?'#7f1d1d':eci>=0.75?'#dc2626':eci>=0.55?'#d97706':'#15803d';
+  const venueAddr=VENUES_ADDRESSES[venueKey]||'';
+  const venueParking=VENUES_PARKING[venueKey]||'—';
+
+  // ── helper: each phase section ────────────────────────────────────────────
+  const phaseSection=(s,idx)=>{
+    const pd=s.data;
+    const worst=pd.worst_corridor; const worstEci=pd.worst_eci?.toFixed(2);
+    const ft=pd.foot_traffic||{}; const pp=pd.parking_pickup||{};
+    const busiestGate=(ft.gates||[]).slice().sort((a,b)=>b.utilisation_pct-a.utilisation_pct)[0];
+    const worstPark=(pp.parking||[]).slice().sort((a,b)=>b.fill_pct-a.fill_pct)[0];
+    const worstPick=(pp.pickup_zones||[]).slice().sort((a,b)=>b.load_pct-a.load_pct)[0];
+    const losCol=LOS_COLOURS[pd.los_grade]||'#aaa';
+    return `
+    <section class="phase" ${idx>0?'style="page-break-before:always;"':''}>
+      <h2>Phase ${idx+1} — ${s.label}</h2>
+      <div class="phase-sub">${s.sub} · ${minutesLabel(s.minutes)}</div>
+      ${s.dataUrl
+        ? `<img src="${s.dataUrl}" alt="${s.label} map" style="width:100%;max-height:430px;object-fit:cover;border:1px solid #ccc;border-radius:4px;margin:8px 0;">`
+        : `<div style="padding:30px;text-align:center;background:#f5f5f5;color:#999;font-size:11px;">Map capture failed — re-run the export</div>`}
+      <div class="kpi-grid">
+        <div class="kpi"><div class="k">Worst LOS</div><div class="v" style="color:${losCol}">${pd.los_grade}</div><div class="s">ECI ${worstEci}</div></div>
+        <div class="kpi"><div class="k">Worst Corridor</div><div class="v" style="font-size:13px;">${(worst||'—').slice(0,28)}</div><div class="s">${pd.osm_road_count||0} OSM roads modelled</div></div>
+        <div class="kpi"><div class="k">Busiest Gate</div><div class="v" style="font-size:14px;">${busiestGate?busiestGate.utilisation_pct+'%':'—'}</div><div class="s">${busiestGate?busiestGate.name.split('—')[0].trim().slice(0,24):''}</div></div>
+        <div class="kpi"><div class="k">Worst Parking</div><div class="v" style="font-size:14px;">${worstPark?worstPark.fill_pct+'%':'—'}</div><div class="s">${worstPark?worstPark.name.slice(0,22):'—'}</div></div>
+        <div class="kpi"><div class="k">Cab Pickup</div><div class="v" style="font-size:14px;">${worstPick?worstPick.load_pct+'%':'—'}</div><div class="s">${worstPick?worstPick.wait_min+' min wait':'—'}</div></div>
+      </div>
+    </section>`;
+  };
+
+  // ── corridor / gate / parking / staff tables ──────────────────────────────
+  const corridorRows=(d.corridors||[]).filter(c=>!c.out_of_city).map(c=>`
+    <tr><td>${c.road_name}</td>
+    <td style="color:${c.colour};font-weight:700;text-align:center;">${c.los_grade}</td>
+    <td style="text-align:center;">${c.eci.toFixed(3)}</td>
+    <td style="text-align:center;">${c.predicted_speed_kmph} km/h</td>
+    <td style="text-align:center;">${c.vehicles_per_hour.toLocaleString()}/hr</td>
+    <td style="text-align:center;">${c.clearance_minutes} min</td></tr>`).join('');
+
+  const ft=d.foot_traffic||{};
+  const gateRows=(ft.gates||[]).map(g=>`
+    <tr><td>${g.name}</td>
+    <td style="color:${g.colour};font-weight:700;text-align:center;">${g.los_grade}</td>
+    <td style="text-align:center;">${g.utilisation_pct}%</td>
+    <td style="text-align:center;">${g.flow_pph.toLocaleString()}/hr</td>
+    <td style="text-align:center;">${g.capacity_pph.toLocaleString()}/hr</td>
+    <td style="text-align:center;">${g.queue_people?g.queue_people.toLocaleString():'—'}</td>
+    <td style="text-align:center;">${g.est_wait_min||0} min</td></tr>`).join('');
+  const stationHTML=ft.station?`
+    <h3>Railway / metro station gate-line</h3>
+    <div style="border:1px solid ${ft.station.colour};border-left:4px solid ${ft.station.colour};border-radius:4px;padding:8px 12px;margin-bottom:10px;">
+      <b>🚉 ${ft.station.name}</b> — <b style="color:${ft.station.colour}">${ft.station.load_pct}%</b> of gate-line capacity (${ft.station.label})
+      · ${ft.station.direction} · ${ft.station.flow_pph.toLocaleString()} vs ${ft.station.capacity_pph.toLocaleString()} pph
+      ${ft.station.queue_people>0?` · est. queue ${ft.station.queue_people.toLocaleString()} people (${ft.station.est_wait_min} min)`:''}
+      ${(ft.station.recommendations||[]).length?`<ol style="margin-top:5px;">${ft.station.recommendations.map(r=>`<li>${r}</li>`).join('')}</ol>`:''}
+    </div>
+    <p style="font-size:10px;color:#555;">Station-side load is assessed independently of venue gates: venue egress can read clear while the converging crowd overloads station stairs/ticket-gates (Elphinstone Road 2017 failure mode). Coordinate with Railway Police (RPF/GRP) for the egress window.</p>`:'';
+
+  const pp=d.parking_pickup||{};
+  const parkingRows=(pp.parking||[]).map(p=>`
+    <tr><td>${p.name}</td>
+    <td style="text-align:center;">${p.capacity}</td>
+    <td style="text-align:center;color:${p.colour};font-weight:700;">${p.fill_pct}%</td>
+    <td style="text-align:center;">${p.access_load_pct}%</td>
+    <td style="text-align:center;">${p.wait_min||0} min</td>
+    <td>${p.access_road}</td></tr>`).join('');
+  const pickupRows=(pp.pickup_zones||[]).map(z=>`
+    <tr><td>${z.name}</td>
+    <td style="text-align:center;color:${z.colour};font-weight:700;">${z.label}</td>
+    <td style="text-align:center;">${z.load_pct}%</td>
+    <td style="text-align:center;">${z.wait_min||0} min</td>
+    <td>${z.serves}</td></tr>`).join('');
+
+  const staff=d.staff_ops||{};
+  const staffRows=(staff.roles||[]).map(r=>`
+    <tr><td>${r.icon} ${r.role}</td>
+    <td style="text-align:center;font-weight:700;">${r.headcount}</td>
+    <td>${r.detail}</td>
+    <td>${r.deploy_by} → ${r.peak} → ${r.stand_down}</td></tr>`).join('');
+  const staffTasks=(staff.roles||[]).map(r=>`
+    <li style="margin-bottom:6px;"><b>${r.icon} ${r.for}:</b><ul style="margin-top:3px;">${(r.tasks||[]).map(t=>`<li style="font-size:10px;">${t}</li>`).join('')}</ul></li>`).join('');
+
+  const deployItems=(d.deployment_indicators||[]).map(i=>{
+    let action='';
+    if(i.type==='police') action=i.recommendation;
+    else if(i.type==='barricade') action=`${i.barricade_type||''} — ${i.restrict_lanes||''}. Alt: ${i.alternative_route||'—'}`;
+    else if(i.type==='diversion') action=`Activate diversion via ${i.diversion_via||'—'} by ${i.activation||'—'}`;
+    else if(i.type==='parking') action=`Open ${i.location_name} by ${i.open_by||'—'} · ${i.walk_distance||'—'}`;
+    else if(i.type==='pedestrian') action=i.note||'';
+    return `<li style="margin-bottom:8px;"><b>${(i.type||'').toUpperCase()}: ${i.location_name}</b>
+    ${i.deploy_by?`— by <b>${i.deploy_by}</b>`:''}
+    ${i.personnel?`· ${i.personnel}`:''}
+    <br><span style="color:#444;">${action}</span></li>`;
+  }).join('');
+
+  const hm=d.historical_model||{};
+  const similar=(hm.similar_events||[]).map(e=>`
+    <li><b>${e.event_name}</b> — ${e.date} (${e.day_of_week}, ${e.weather}) · severity ${e.severity_score} · worst: ${(e.worst_corridors||[]).slice(0,2).join(', ')||'—'}</li>`).join('');
+
+  const disruptionList=(d.disruptions_detail||[]).length>0
+    ? (d.disruptions_detail).map(dr=>`<li>${dr.description} — severity ${dr.severity} (${dr.affected_corridor||'corridor'})</li>`).join('')
+    : '<li>No active disruptions at time of prediction</li>';
+
+  const summary=`Predicted ${({A:'very light',B:'light',C:'moderate',D:'heavy',E:'severe',F:'gridlock'}[d.los_grade]||'significant')} congestion on <b>${d.worst_corridor}</b> reaching LOS ${d.los_grade} around ${d.predicted_peak_time}. Traffic expected to clear by approximately ${d.clearance_time}. ${aug?.active_names?.length>0?`Transit augmentation (${aug.active_names.join(', ')}) is active — estimated road traffic reduction of ${aug.road_reduction_pct}%.`:'No transit augmentation measures are active.'}`;
+
+  return `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
+<title>Pre-Event Traffic Management Plan — ${d.venue}</title>
+<style>
+@page { size:A4; margin:18mm 16mm 20mm 16mm; }
+*{box-sizing:border-box;}
+body{font-family:Arial,sans-serif;color:#111;font-size:11.5px;line-height:1.5;background:#fff;}
+.no-print{margin-bottom:14px;}
+@media print{.no-print{display:none;} section{page-break-inside:avoid;}}
+.page-header{display:flex;justify-content:space-between;align-items:flex-start;
+             border-bottom:3px solid #111;padding-bottom:12px;margin-bottom:16px;}
+.logo-box{width:80px;height:50px;background:#f0f0f0;border:1px solid #ccc;
+          display:flex;align-items:center;justify-content:center;font-size:9px;color:#999;border-radius:3px;}
+.doc-title h1{font-size:18px;margin:0;font-weight:900;letter-spacing:.01em;}
+.doc-title .sub{font-size:11px;color:#555;margin-top:2px;}
+.confidential{font-size:10px;font-weight:700;color:#dc2626;border:1px solid #dc2626;
+              padding:2px 8px;border-radius:3px;}
+h2{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+   border-bottom:2px solid #E24B4A;padding-bottom:4px;margin:18px 0 8px;}
+h3{font-size:11px;font-weight:700;text-transform:uppercase;color:#555;margin:12px 0 6px;}
+.phase-sub{font-size:10px;color:#666;margin:-4px 0 6px;font-style:italic;}
+.kpi-grid{display:flex;border:1px solid #ddd;border-radius:4px;overflow:hidden;margin-bottom:8px;}
+.kpi{flex:1;padding:6px 8px;border-right:1px solid #ddd;}
+.kpi:last-child{border-right:none;}
+.kpi .k{font-size:8px;text-transform:uppercase;color:#888;letter-spacing:.06em;margin-bottom:2px;}
+.kpi .v{font-size:16px;font-weight:900;line-height:1.2;}
+.kpi .s{font-size:9px;color:#666;margin-top:1px;}
+.risk-badge{display:inline-block;padding:3px 10px;border-radius:3px;font-weight:700;
+            font-size:12px;color:#fff;background:${riskCol};}
+table{width:100%;border-collapse:collapse;font-size:10.5px;margin-bottom:10px;}
+th{background:#f5f5f5;text-align:left;padding:5px 7px;border-bottom:2px solid #ddd;
+   font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;}
+td{padding:4px 7px;border-bottom:1px solid #eee;vertical-align:top;}
+ol,ul{padding-left:18px;margin:6px 0;}
+li{margin-bottom:4px;}
+.advisory{background:#f8f8f8;border:1px solid #ddd;border-radius:4px;padding:10px 14px;
+          font-size:10.5px;line-height:1.6;}
+.sign-block{display:flex;gap:30px;margin-top:30px;page-break-inside:avoid;}
+.sign-line{border-top:1px solid #888;padding-top:5px;font-size:10px;color:#666;width:200px;}
+.footer{text-align:center;font-size:9px;color:#aaa;margin-top:24px;padding-top:8px;border-top:1px solid #eee;}
+.transport-bar{display:flex;height:20px;border-radius:4px;overflow:hidden;margin:6px 0;}
+.tbi{display:flex;align-items:center;justify-content:center;font-size:9px;color:#fff;font-weight:700;}
+</style></head>
+<body>
+
+<div class="no-print">
+  <button onclick="window.print()" style="background:#111;color:#fff;border:none;padding:8px 20px;border-radius:4px;font-size:13px;cursor:pointer;">🖨 Print / Save as PDF</button>
+  <button onclick="window.close()" style="background:#666;color:#fff;border:none;padding:8px 16px;border-radius:4px;font-size:13px;cursor:pointer;margin-left:8px;">✕ Close</button>
+</div>
+
+<!-- COVER -->
+<div class="page-header">
+  <div style="display:flex;gap:14px;align-items:flex-start;">
+    <div class="logo-box">EventTraffic<br>Platform</div>
+    <div class="doc-title">
+      <h1>PRE-EVENT TRAFFIC MANAGEMENT PLAN</h1>
+      <div class="sub">Prepared by EventTraffic Platform · For official use only · Mumbai Traffic Police &amp; Event Organiser</div>
+      <div class="sub" style="margin-top:3px;">
+        <b>Ref:</b> ${(d.venue||'').replace(/[^a-zA-Z]/g,'-')}-${evDate}-${(evType||'event').toUpperCase()} &nbsp;
+        <b>Generated:</b> ${now}
+      </div>
+    </div>
+  </div>
+  <div class="confidential">CONFIDENTIAL</div>
+</div>
+
+<h2>Event Details</h2>
+<table style="width:auto;margin-bottom:14px;">
+  <tr><td style="font-weight:700;width:160px;padding:3px 8px 3px 0;">Venue</td><td>${d.venue} · ${venueAddr}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Event Type</td><td>${(evType||'').charAt(0).toUpperCase()+(evType||'').slice(1)} · ${(artist||'').replace(/_/g,' ')}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Date / Start Time</td><td>${evDate} at ${evTime||'—'}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Expected Attendance</td><td>${crowd.toLocaleString()}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Venue Parking Capacity</td><td>${venueParking} vehicles (on-site)</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Gate Layout</td><td>${d.active_layout||'default'} — ${(d.available_layouts||[]).find(l=>l.key===(d.active_layout||'default'))?.label||''}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Ticket Price</td><td>Face ₹${d.original_ticket_price?.toLocaleString()||'—'} · Effective ₹${d.ticket_price?.toLocaleString()||'—'}${d.resale_info?.label?' · '+d.resale_info.label:''}</td></tr>
+  <tr><td style="font-weight:700;padding:3px 8px 3px 0;">Weather Scenario</td><td>${d.weather?.label||'Clear'}${d.weather&&d.weather.eci_mult>1?` — congestion scaled ×${d.weather.eci_mult}`:''}</td></tr>
+</table>
+
+<h2>Executive Summary</h2>
+<div class="kpi-grid">
+  <div class="kpi"><div class="k">Risk Level</div><div class="v"><span class="risk-badge">${risk}</span></div><div class="s">overall</div></div>
+  <div class="kpi"><div class="k">Worst LOS</div><div class="v" style="color:${LOS_COLOURS[d.los_grade]||'#111'}">${d.los_grade}</div><div class="s">${d.worst_corridor}</div></div>
+  <div class="kpi"><div class="k">ECI</div><div class="v">${d.worst_eci?.toFixed(3)||'—'}</div><div class="s">peak corridor</div></div>
+  <div class="kpi"><div class="k">Predicted Peak</div><div class="v">${d.predicted_peak_time||'—'}</div><div class="s">~ T-30 min</div></div>
+  <div class="kpi"><div class="k">Est. Clearance</div><div class="v">${d.clearance_time||'—'}</div><div class="s">worst corridor</div></div>
+</div>
+<p>${summary}</p>
+<p style="margin-top:6px;font-size:11px;">Historical baseline ECI: <b>${d.historical_baseline||'0.70'}</b> (from <b>${d.past_events_used||0}</b> comparable past events at this venue). Day-of-week multiplier: <b>×${hm.dow_multiplier||1.18}</b>. Hourly background congestion: <b>${hm.background_eci||'—'}</b>.</p>
+
+<h2>Transport Mix &amp; Estimated Volume</h2>
+<div class="transport-bar">
+  <div class="tbi" style="width:${pct(split.foot_auto)}%;background:#6b7280;">🚶</div>
+  <div class="tbi" style="width:${pct(split.train_metro)}%;background:#2563eb;">🚂</div>
+  <div class="tbi" style="width:${pct(split.car_cab)}%;background:#dc2626;">🚗</div>
+</div>
+<div style="display:flex;gap:14px;font-size:11px;color:#444;">
+  <span>🚶 Walk/Auto: ${pct(split.foot_auto)}% (${Math.round(split.foot_auto*crowd).toLocaleString()})</span>
+  <span>🚂 Train/Metro: ${pct(split.train_metro)}% (${Math.round(split.train_metro*crowd).toLocaleString()})</span>
+  <span>🚗 Car/Cab: ${pct(split.car_cab)}% (${Math.round(split.car_cab*crowd).toLocaleString()})</span>
+</div>
+<p style="margin-top:5px;font-size:10.5px;color:#555;">Car multiplier vs venue baseline: ×${d.car_multiplier||1}. ${aug?.active_names?.length>0?`Active augmentation: <b>${aug.active_names.join(', ')}</b> — est. road traffic reduction ${aug.road_reduction_pct}%.`:'No transit augmentation enabled.'}</p>
+
+<!-- PHASE MAPS (5 pages) -->
+<div style="page-break-before:always;"></div>
+<h2>Time-Phased Congestion Maps</h2>
+<p style="font-size:10.5px;color:#555;margin-bottom:6px;">Each phase shows the predicted state of road and crowd congestion at that point relative to event start. Maps capture the vehicular ECI heatmap; foot-traffic densities at each gate are summarised in the KPI grid below each map.</p>
+${snapshots.map(phaseSection).join('')}
+
+<!-- DETAILED TABLES (current/selected time) -->
+<div style="page-break-before:always;"></div>
+<h2>Corridor-Level Vehicular Forecast</h2>
+<p style="font-size:10px;color:#555;">Predicted state of named approach corridors at the worst-case (T-30) phase.</p>
+<table>
+  <thead><tr><th>Road / Corridor</th><th style="text-align:center;">LOS</th><th style="text-align:center;">ECI</th><th style="text-align:center;">Speed</th><th style="text-align:center;">Volume</th><th style="text-align:center;">Clearance</th></tr></thead>
+  <tbody>${corridorRows||'<tr><td colspan="6">No named corridors data.</td></tr>'}</tbody>
+</table>
+
+${(d.extended_feeders||[]).length?`
+<h3>Approach-highway queue forecast (long-range)</h3>
+<table>
+  <thead><tr><th>Feeder route</th><th style="text-align:center;">Predicted queue</th><th style="text-align:center;">Monitored length</th><th style="text-align:center;">Worst LOS on route</th></tr></thead>
+  <tbody>${d.extended_feeders.map(f=>{
+    const worstSeg=f.segments.reduce((a,b)=>b.eci>a.eci?b:a,f.segments[0]);
+    return `<tr><td>${f.road_name}</td>
+    <td style="text-align:center;font-weight:700;color:${f.jam_km>5?'#dc2626':f.jam_km>2?'#d97706':'#15803d'};">${f.jam_km} km</td>
+    <td style="text-align:center;">${f.total_km} km</td>
+    <td style="text-align:center;color:${worstSeg.colour};font-weight:700;">${worstSeg.los_grade}</td></tr>`;}).join('')}
+  </tbody>
+</table>
+<p style="font-size:10px;color:#555;">Queue length scales with crowd, car share and phase — calibrated to Coldplay @ DY Patil 2025 (50k crowd → 8–10 km documented on Sion-Panvel Highway). Route geometries are approximate; verify against ground truth before publishing.</p>
+`:''}
+
+<h2>Gate-Level Pedestrian Forecast</h2>
+<table>
+  <thead><tr><th>Gate</th><th style="text-align:center;">LOS</th><th style="text-align:center;">Utilisation</th><th style="text-align:center;">Flow</th><th style="text-align:center;">Capacity</th><th style="text-align:center;">Queue (ppl)</th><th style="text-align:center;">Wait</th></tr></thead>
+  <tbody>${gateRows||'<tr><td colspan="7">—</td></tr>'}</tbody>
+</table>
+<p style="font-size:10px;color:#555;">Queue figures use a fluid-queue model: arrivals beyond gate capacity accumulate over time rather than being read off instantaneous utilisation.</p>
+${stationHTML}
+
+<h2>Parking &amp; Pickup Analysis</h2>
+<h3>Parking lots</h3>
+<table>
+  <thead><tr><th>Lot</th><th style="text-align:center;">Capacity</th><th style="text-align:center;">Fill</th><th style="text-align:center;">Entry-queue load</th><th style="text-align:center;">Wait</th><th>Access road</th></tr></thead>
+  <tbody>${parkingRows||'<tr><td colspan="6">—</td></tr>'}</tbody>
+</table>
+<h3>Uber / Ola / taxi pickup zones</h3>
+<table>
+  <thead><tr><th>Zone</th><th style="text-align:center;">Status</th><th style="text-align:center;">Load</th><th style="text-align:center;">Wait</th><th>Serves</th></tr></thead>
+  <tbody>${pickupRows||'<tr><td colspan="5">—</td></tr>'}</tbody>
+</table>
+<p style="font-size:10px;color:#555;">Total cars expected: <b>${pp.cars_total?.toLocaleString()||'—'}</b> · Cab/auto passengers: <b>${pp.cab_people?.toLocaleString()||'—'}</b></p>
+
+${d.parking_plan?`
+<div style="page-break-before:always;"></div>
+<h2>Parking Plan (Traffic NOC Annexure)</h2>
+<div class="kpi-grid">
+  <div class="kpi"><div class="k">Vehicles expected</div><div class="v">${d.parking_plan.total_cars_expected.toLocaleString()}</div><div class="s">private cars needing a space</div></div>
+  <div class="kpi"><div class="k">Mapped supply</div><div class="v">${d.parking_plan.total_capacity.toLocaleString()}</div><div class="s">across ${d.parking_plan.lots.length} designated lots</div></div>
+  <div class="kpi"><div class="k">Utilisation</div><div class="v" style="color:${d.parking_plan.utilisation_pct>90?'#dc2626':d.parking_plan.utilisation_pct>75?'#d97706':'#15803d'}">${d.parking_plan.utilisation_pct}%</div><div class="s">of usable supply</div></div>
+  <div class="kpi"><div class="k">Shortfall</div><div class="v" style="color:${d.parking_plan.shortfall>0?'#dc2626':'#15803d'}">${d.parking_plan.shortfall>0?d.parking_plan.shortfall.toLocaleString():'None'}</div><div class="s">vehicles unaccommodated</div></div>
+  <div class="kpi"><div class="k">Parking marshals</div><div class="v">${d.parking_plan.total_marshals}</div><div class="s">total across lots</div></div>
+</div>
+<p style="font-size:10.5px;">Allocation is nearest-first by walking distance: each lot is filled to 90% of capacity (10% held as VIP/operations reserve) before overflow moves to the next. "Fill by" is the clock time at which the lot is predicted to reach its allocation, from the cumulative arrival curve.</p>
+<table>
+  <thead><tr><th>Designated lot</th><th style="text-align:center;">Allocated</th><th style="text-align:center;">Capacity</th><th style="text-align:center;">Fill by</th><th>Entry route</th><th style="text-align:center;">Walk</th><th style="text-align:center;">Marshals</th><th style="text-align:center;">Exit clear</th></tr></thead>
+  <tbody>${d.parking_plan.lots.map(l=>`
+    <tr><td>${l.name}${l.vip_ops_reserve?` <span style="color:#888;font-size:9px;">(+${l.vip_ops_reserve} VIP/ops)</span>`:''}</td>
+    <td style="text-align:center;font-weight:700;">${l.allocated.toLocaleString()}</td>
+    <td style="text-align:center;">${l.capacity.toLocaleString()}</td>
+    <td style="text-align:center;">${l.allocated>0?l.fill_by:'—'}</td>
+    <td>${l.entry_route}</td>
+    <td style="text-align:center;">${l.walk_min} min</td>
+    <td style="text-align:center;">${l.marshals||'—'}</td>
+    <td style="text-align:center;">${l.exit_clear_min?l.exit_clear_min+' min':'—'}</td></tr>`).join('')}
+  </tbody>
+</table>
+${(d.parking_plan.overflow_recommendations||[]).length?`
+<h3>Overflow / demand-management measures</h3>
+<ol>${d.parking_plan.overflow_recommendations.map(r=>`<li>${r}</li>`).join('')}</ol>`:''}
+<p style="font-size:9.5px;color:#888;font-style:italic;">${d.parking_plan.verification_note}</p>
+`:''}
+
+<!-- CROWD DENSITY SAFETY -->
+<div style="page-break-before:always;"></div>
+<h2>Crowd Density Safety Assessment</h2>
+${d.internal_density?.applicable?`
+<div style="border:2px solid ${d.internal_density.colour};border-radius:5px;padding:10px 14px;margin-bottom:10px;">
+  <div style="font-weight:900;font-size:13px;color:${d.internal_density.colour};">${d.internal_density.label}</div>
+  <table style="width:auto;margin:8px 0 4px;">
+    <tr><td style="font-weight:700;padding:2px 10px 2px 0;">Standing floor area</td><td>${d.internal_density.floor_area_m2.toLocaleString()} m²</td></tr>
+    <tr><td style="font-weight:700;padding:2px 10px 2px 0;">Peak occupancy modelled</td><td>${d.internal_density.people_inside.toLocaleString()} people (${d.internal_density.occupancy_pct}% of expected crowd)</td></tr>
+    <tr><td style="font-weight:700;padding:2px 10px 2px 0;">Average floor density</td><td>${d.internal_density.avg_density} persons/m²</td></tr>
+    <tr><td style="font-weight:700;padding:2px 10px 2px 0;">Front-of-stage density (est.)</td><td><b>${d.internal_density.front_stage_density} persons/m²</b> (≈3× average packing)</td></tr>
+  </table>
+  ${(d.internal_density.recommendations||[]).length?`<div style="font-weight:700;font-size:10.5px;margin-top:4px;">Required mitigations:</div>
+  <ol>${d.internal_density.recommendations.map(r=>`<li>${r}</li>`).join('')}</ol>`:''}
+</div>
+<p style="font-size:10px;color:#555;">Reference thresholds: ${d.internal_density.thresholds}. Note: gate-level LOS can remain acceptable while front-of-stage density reaches dangerous levels — floor density requires independent monitoring (elevated spotters, CCTV/drone), per NDMA real-time monitoring guidance.</p>
+`:`<p style="font-size:10.5px;color:#555;">${d.internal_density?.note||'Not modelled for this event type.'}</p>`}
+
+${d.floorplan?.active&&(d.floorplan.hotspots||[]).length?`
+<h3>Micro-congestion map (from uploaded floor plan: ${d.floorplan.filename||''} · ${d.floorplan.confidence||'?'} confidence)</h3>
+<p style="font-size:10px;color:#555;">Local density per zone at its worst phase. Zones marked ⚠ exceed the Green Guide standing maximum (4.7 p/m²) and need dedicated stewarding.</p>
+<table>
+  <thead><tr><th>Zone</th><th style="text-align:center;">Worst phase</th><th style="text-align:center;">Est. local density</th><th style="text-align:center;">Level</th><th>Mitigation</th></tr></thead>
+  <tbody>${d.floorplan.hotspots.map(h=>`
+    <tr><td>${h.density>=4.7?'⚠ ':''}${h.label}${h.location_hint?` <span style="color:#888;font-size:9px;">(${h.location_hint})</span>`:''}</td>
+    <td style="text-align:center;">${h.worst_phase}</td>
+    <td style="text-align:center;font-weight:700;color:${h.colour};">${h.density} p/m²</td>
+    <td style="text-align:center;color:${h.colour};font-weight:700;">${h.level}</td>
+    <td style="font-size:9.5px;">${h.mitigation||'—'}</td></tr>`).join('')}
+  </tbody>
+</table>
+${(d.floorplan.pinch_points||[]).length?`<p style="font-size:10px;"><b>Pinch points identified on the plan:</b></p><ul>${d.floorplan.pinch_points.map(p=>`<li style="font-size:10px;">${p}</li>`).join('')}</ul>`:''}
+<p style="font-size:9.5px;color:#888;font-style:italic;">Calibration applied: floor area ${d.floorplan.comparison?.floor_area_extracted_m2?`${d.floorplan.comparison.floor_area_extracted_m2.toLocaleString()} m² from plan (desk estimate was ${d.floorplan.comparison.floor_area_modeled_m2?.toLocaleString()} m²)`:'desk estimate retained'} · exit capacity factor ×${d.floorplan.comparison?.exit_capacity_factor_applied} from ${d.floorplan.comparison?.access_points_extracted} extracted access points vs ${d.floorplan.comparison?.gates_modeled} modeled gates.</p>
+`:''}
+
+<!-- STAFF OPS -->
+<h2>Ground-Staff Deployment Plan</h2>
+<p style="font-size:10.5px;">Total ground-staff headcount required: <b>${staff.total_staff||'—'}</b></p>
+<table>
+  <thead><tr><th>Role</th><th style="text-align:center;">Headcount</th><th>Detail</th><th>Deploy → Peak → Stand-down</th></tr></thead>
+  <tbody>${staffRows||'<tr><td colspan="4">—</td></tr>'}</tbody>
+</table>
+<h3>Role tasks &amp; positioning</h3>
+<ol>${staffTasks}</ol>
+
+<!-- DEPLOYMENT (police/barricade/etc) -->
+<h2>Police / Barricade / Diversion Deployment</h2>
+<ol>${deployItems||'<li>No deployments triggered at current parameters.</li>'}</ol>
+
+<h2>Active Road Disruptions</h2>
+<ul>${disruptionList}</ul>
+
+<!-- HISTORY -->
+<h2>Historical Reference</h2>
+<p>Prediction blends formula output (60%) with the historical baseline (40%). Day-of-week and hourly background congestion are factored in.</p>
+${similar?`<h3>Closest past events at this venue</h3><ul style="font-size:10.5px;">${similar}</ul>`:''}
+
+<!-- ADVISORY -->
+<h2>Attendee Advisory <span style="font-weight:400;font-size:10px;color:#888;">(for the organiser to share with ticket holders)</span></h2>
+<div class="advisory">
+  ${d.egress_advisory?`<b>⚠ ${d.egress_advisory.text}</b><br>`:''}
+  To avoid peak congestion, arrive <b>before ${d.predicted_peak_time?addMins(d.predicted_peak_time,-45):evTime}</b> or after <b>${d.clearance_time||'23:00'}</b>.
+  <br>Recommended transport: ${pct(split.train_metro)>35?'<b>Train/Metro</b> (strongly recommended) · ':''}${pct(split.car_cab)>40?'Cab/Uber ·':''} Auto-rickshaw for last-mile.
+  ${aug?.active_names?.length>0?`<br>Special arrangements: <b>${aug.active_names.join(' · ')}</b>.`:''}
+  <br>Parking available at venue for ${venueParking} vehicles. Allow up to <b>${pp.pickup_zones?.[0]?.wait_min||30} min</b> for a cab post-event; consider walking to the nearest station instead.
+</div>
+
+<!-- SIGN-OFF -->
+<div class="sign-block">
+  <div><div class="sign-line">Traffic Inspector (Name &amp; Rank)</div></div>
+  <div><div class="sign-line">DCP Traffic (Signature &amp; Date)</div></div>
+  <div><div class="sign-line">Event Organiser Representative</div></div>
+</div>
+
+<div class="footer">
+  EventTraffic Platform · Mumbai Traffic Management · CONFIDENTIAL · Generated ${now}
+</div>
+
+</body></html>`;
+}
+
+
+// Venue addresses + parking for report (injected in print tab via JS context)
+const VENUES_ADDRESSES={
+  wankhede:'D Rd, Churchgate, Mumbai 400020',
+  dome:'D Wing, NSCI SVP Stadium, Lala Lajpatrai Marg, Worli, Mumbai 400018',
+  dypatil:'Sector 7, Nerul, Navi Mumbai 400706',
+  nesco:'Western Express Hwy, Goregaon East, Mumbai 400063',
+  mmrda:'G Block, Bandra Kurla Complex, Bandra East, Mumbai 400051',
+  mahalaxmi:'Keshavrao Khadye Marg, Mahalaxmi, Mumbai 400034'
+};
+const VENUES_PARKING={wankhede:500,dome:800,dypatil:3000,nesco:2500,mmrda:2000,mahalaxmi:1000};
+
+// Helper used in export (mirrors backend add_time_minutes)
+function addMins(timeStr,delta){
+  try{
+    const[h,m]=timeStr.split(':').map(Number);
+    const total=h*60+m+delta;
+    const nh=((Math.floor(total/60))%24+24)%24;
+    const nm=((total%60)+60)%60;
+    return `${String(nh).padStart(2,'0')}:${String(nm).padStart(2,'0')}`;
+  }catch(e){ return timeStr; }
+}
+
+// ── Foot traffic / view toggle ────────────────────────────────────────────────
+
+function pciColour(pci){
+  if(pci>=0.90) return '#7F1D1D';
+  if(pci>=0.75) return '#E24B4A';
+  if(pci>=0.60) return '#F97316';
+  if(pci>=0.40) return '#EAB308';
+  return '#1D9E75';
+}
+function pciGrade(pci){
+  if(pci>=0.90) return 'F';
+  if(pci>=0.75) return 'E';
+  if(pci>=0.60) return 'D';
+  if(pci>=0.40) return 'C';
+  if(pci>=0.20) return 'B';
+  return 'A';
+}
+function pciLabel(pci){
+  const g=pciGrade(pci);
+  const labels={A:'Free flow',B:'Comfortable',C:'Moderate',D:'Congested',E:'Near capacity',F:'Overcrowded'};
+  return `${g} — ${labels[g]}`;
+}
+
+// Gate marker icon (coloured bubble)
+function makeGateIcon(gate){
+  const col=pciColour(gate.pci);
+  const sz=38;
+  const pulse=gate.pci>=0.75?' pulsing':'';
+  const emoji=gate.pci>=0.90?'🔴':gate.pci>=0.75?'🟠':gate.pci>=0.40?'🟡':'🟢';
+  return L.divIcon({
+    html:`<div class="gate-bubble${pulse}"
+               style="width:${sz}px;height:${sz}px;
+                      background:${col}22;border-color:${col};
+                      --gc:${col};color:${col};font-size:15px;">${emoji}</div>`,
+    className:'',iconSize:[sz,sz],iconAnchor:[sz/2,sz/2]
+  });
+}
+
+// Gate click popup
+function gatePopup(gate, isEgress){
+  const col=pciColour(gate.pci);
+  const phase=isEgress?'🚪 Post-event egress':'🎟 Pre-event entry';
+  const waitTxt=gate.est_wait_min>0
+    ?`<br>⏳ Queue: <b>~${(gate.queue_people||0).toLocaleString()} people</b> · <b>${gate.est_wait_min} min</b> wait`
+    :'';
+  const solHtml=(gate.solutions||[]).length
+    ?`<hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+       <b style="font-size:10px;color:#333;">Recommended solutions</b>
+       <ul style="padding-left:14px;margin:4px 0;">${
+         (gate.solutions||[]).map(s=>`<li style="font-size:10px;color:#444;margin-bottom:2px;">${s}</li>`).join('')
+       }</ul>`:'' ;
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:210px;line-height:1.5;max-width:260px;">
+    <b style="font-size:13px;">${gate.name}</b><br>
+    <span style="color:${col};font-size:13px;font-weight:700;">${pciLabel(gate.pci)} · PCI ${gate.pci.toFixed(3)}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    🧍 Flow: <b>${(gate.flow_pph||0).toLocaleString()} pph</b><br>
+    🏁 Capacity: <b>${gate.capacity_pph.toLocaleString()} pph</b><br>
+    📊 Utilisation: <b>${gate.utilisation_pct}%</b>${gate.utilisation_pct>100?' <span style="color:#E24B4A;font-weight:700;">(over capacity)</span>':''}${waitTxt}<br>
+    <span style="font-size:10px;color:#666;">${phase}</span>
+    ${gate.notes?`<br><span style="font-size:10px;color:#888;">${gate.notes}</span>`:''}
+    ${solHtml}
+  </div>`;
+}
+
+// Pedestrian walking corridor popup
+function pedCorridorPopup(corr){
+  const col=pciColour(corr.pci);
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:195px;line-height:1.5;">
+    <b>🚶 ${corr.name}</b><br>
+    <span style="color:${col};font-weight:700;">${pciLabel(corr.pci)} · PCI ${corr.pci.toFixed(3)}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📍 ${corr.from} → ${corr.to}<br>
+    ⏱ Walk time: <b>${corr.walk_time_min} min</b><br>
+    🏋 Capacity: <b>${corr.capacity_pph.toLocaleString()} pph</b><br>
+    🧍 Flow: <b>${(corr.flow_pph||0).toLocaleString()} pph</b>
+    ${corr.bottleneck?`<br><span style="font-size:10px;color:#EAB308;">⚠ ${corr.bottleneck}</span>`:''}
+  </div>`;
+}
+
+// Metres between two lat/lng points (haversine)
+function metresBetween(la1,ln1,la2,ln2){
+  const R=6371000, d2r=Math.PI/180;
+  const dLa=(la2-la1)*d2r, dLn=(ln2-ln1)*d2r;
+  const a=Math.sin(dLa/2)**2+Math.cos(la1*d2r)*Math.cos(la2*d2r)*Math.sin(dLn/2)**2;
+  return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
+
+// Render foot traffic as a GEOGRAPHIC density field built from translucent circles
+// measured in METRES (so it stays a smooth, continuous zone at every zoom level —
+// unlike a pixel-radius heatmap, which breaks up into dots when you zoom in).
+function renderFootTraffic(data){
+  footLayers.forEach(l=>map.removeLayer(l));
+  footLayers=[];
+
+  const ft=data.foot_traffic;
+  if(!ft) return;
+
+  // Fade roads right back so the density field reads clearly
+  corridorLayers.forEach(l=>{ if(l.setStyle) l.setStyle({opacity:0.08}); });
+
+  const circle=(lat,lng,radiusM,col,op)=>{
+    const c=L.circle([lat,lng],{radius:radiusM,stroke:false,fillColor:col,
+                                fillOpacity:op,interactive:false}).addTo(map);
+    footLayers.push(c);
+  };
+
+  // ── Corridor density "tubes": overlapping metre-circles along each walking route ──
+  (ft.corridors||[]).forEach(corr=>{
+    const P=corr.points||[]; if(P.length<2) return;
+    const col=pciColour(corr.pci);
+    const op =0.10+0.20*Math.min(1,corr.pci);
+    for(let i=0;i<P.length-1;i++){
+      const [la1,ln1]=P[i], [la2,ln2]=P[i+1];
+      const segM=metresBetween(la1,ln1,la2,ln2);
+      const steps=Math.max(1,Math.round(segM/28));
+      for(let s=0;s<=steps;s++){
+        const t=s/steps;
+        circle(la1+(la2-la1)*t, ln1+(ln2-ln1)*t, 30, col, op);
+      }
+    }
+    // Faint clickable centre-line (keeps the route popup accessible)
+    const path=L.polyline(P.map(p=>[p[0],p[1]]),{color:'#e5e7eb',weight:1.5,opacity:0.4,dashArray:'4 6'}).addTo(map);
+    path.bindPopup(pedCorridorPopup(corr));
+    footLayers.push(path);
+  });
+
+  // ── Gate crowd zones: concentric metre-circles → smooth radial density blob ──
+  (ft.gates||[]).forEach(g=>{
+    if(g.lat==null||g.lng==null) return;
+    const col=pciColour(g.pci);
+    const u=Math.min(1.6,(g.utilisation_pct||0)/100);
+    const R=28+u*80;   // crowd footprint in metres — a jammed gate spreads wider
+    [[1.00,0.10],[0.70,0.15],[0.45,0.21],[0.24,0.28]].forEach(([rf,op])=>
+      circle(g.lat,g.lng, R*rf, col, op));
+  });
+
+  // ── Labeled gate bubbles on top ──
+  (ft.gates||[]).forEach(g=>{
+    if(g.lat==null||g.lng==null) return;
+    const m=L.marker([g.lat,g.lng],{icon:makeGateIcon(g),zIndexOffset:600})
+      .addTo(map).bindPopup(gatePopup(g, ft.is_egress));
+    footLayers.push(m);
+  });
+
+  // ── Station gate-line marker (venue can be clear while the station crushes) ──
+  const st=ft.station;
+  if(st&&st.lat!=null){
+    const u=Math.min(1.6,(st.load_pct||0)/100);
+    const R=35+u*90;
+    [[1.00,0.09],[0.65,0.15],[0.38,0.22]].forEach(([rf,op])=>
+      circle(st.lat,st.lng, R*rf, st.colour, op));
+    const icon=L.divIcon({className:'',
+      html:`<div style="background:#111;border:2px solid ${st.colour};border-radius:6px;
+        padding:2px 7px;font-size:10px;font-weight:700;color:${st.colour};white-space:nowrap;
+        box-shadow:0 1px 5px rgba(0,0,0,.6);">🚉 ${st.load_pct}%</div>`,
+      iconAnchor:[24,12]});
+    const m=L.marker([st.lat,st.lng],{icon,zIndexOffset:650}).addTo(map).bindPopup(`
+      <b style="font-size:12px;">🚉 ${st.name}</b><br>
+      <span style="font-size:11px;">Gate-line load: <b style="color:${st.colour}">${st.load_pct}%</b> (${st.label})<br>
+      ${st.direction} · ${st.flow_pph.toLocaleString()} / ${st.capacity_pph.toLocaleString()} pph
+      ${st.queue_people>0?`<br>⏳ ~${st.queue_people.toLocaleString()} queued · ${st.est_wait_min} min`:''}</span>
+      ${(st.recommendations||[]).length?'<hr style="margin:4px 0;"><span style="font-size:10px;">'+st.recommendations.map(r=>'• '+r).join('<br>')+'</span>':''}`);
+    footLayers.push(m);
+  }
+
+  updateFootPanel(data);
+}
+
+// Update foot traffic side panel
+function updateFootPanel(data){
+  const ft=data.foot_traffic;
+  if(!ft) return;
+  document.getElementById('fp-venue').textContent=`${data.venue} · Foot Traffic`;
+  document.getElementById('fp-total-flow').textContent=`${(ft.total_pedestrian_flow_pph||0).toLocaleString()} pph`;
+  document.getElementById('fp-walk-pop').textContent=`${(ft.walking_population||0).toLocaleString()} people`;
+  document.getElementById('fp-phase').textContent=ft.is_egress?'🚪 Post-event egress':'🎟 Pre-event arrival';
+
+  document.getElementById('fp-gates-list').innerHTML=(ft.gates||[]).map(gate=>{
+    const col=pciColour(gate.pci);
+    const util=gate.utilisation_pct;
+    const grade=pciGrade(gate.pci);
+    const q=gate.queue_people>0
+      ?`<div style="font-size:9px;color:${col};margin-left:14px;">⏳ queue ~${gate.queue_people.toLocaleString()} ppl · ${gate.est_wait_min} min wait</div>`
+      :'';
+    return `<div class="fp-gate-row">
+      <div class="fp-gate-dot" style="background:${col}"></div>
+      <div class="fp-gate-name">${gate.name}</div>
+      <div class="fp-gate-util" style="color:${col}">${util}% <span style="font-weight:400;font-size:9px;">LOS ${grade}</span></div>
+    </div>${q}`;
+  }).join('')
+  // Station gate-line card — the venue can be clear while the station stairs crush.
+  +(ft.station?`
+    <div style="border:1px solid ${ft.station.colour};border-left:4px solid ${ft.station.colour};border-radius:5px;padding:6px 8px;margin-top:7px;">
+      <div style="font-size:10.5px;font-weight:700;color:${ft.station.colour};">
+        🚉 ${ft.station.name} — ${ft.station.load_pct}% gate-line (${ft.station.label})
+      </div>
+      <div style="font-size:9px;color:#aaa;margin-top:2px;">
+        ${ft.station.direction} · ${ft.station.flow_pph.toLocaleString()} pph vs ${ft.station.capacity_pph.toLocaleString()} pph capacity
+        ${ft.station.queue_people>0?` · ⏳ ~${ft.station.queue_people.toLocaleString()} queued (${ft.station.est_wait_min} min)`:''}
+      </div>
+      ${(ft.station.recommendations||[]).map(r=>`<div class="sp-task" style="border-left-color:${ft.station.colour};">${r}</div>`).join('')}
+    </div>`:'');
+}
+
+// ── Venue footprint outline (replaces the single pin) ──────────────────────────
+function renderVenueOutline(data, coords){
+  if(venueOutline){ map.removeLayer(venueOutline); venueOutline=null; }
+  if(venueMarker){ map.removeLayer(venueMarker); venueMarker=null; }
+  const fp = data.venue_footprint;
+  const cap = (data.crowd_size||0).toLocaleString();
+  if(fp && fp.length>=3){
+    venueOutline = L.polygon(fp, {
+      color:'#ffffff', weight:2, opacity:0.9,
+      fillColor:'#E24B4A', fillOpacity:0.10, dashArray:'5 4'
+    }).addTo(map).bindPopup(
+      `<b style="font-size:13px;">${data.venue}</b><br>
+       <span style="color:#666;font-size:11px;">${data.event_type||''} · capacity ${cap}</span>`
+    );
+  } else {
+    // Fallback when no footprint polygon is available
+    venueMarker=L.marker(coords,{icon:L.divIcon({
+      html:`<div style="width:14px;height:14px;background:#fff;border-radius:50%;border:3px solid #E24B4A;box-shadow:0 0 10px rgba(226,75,74,.9);"></div>`,
+      className:'',iconSize:[14,14],iconAnchor:[7,7]
+    })}).addTo(map).bindPopup(`<b>${data.venue}</b>`);
+  }
+}
+
+// ── Entrance / exit gate markers (shown in vehicular view) ─────────────────────
+const GATE_TYPE_STYLE = {
+  entry:        {c:'#1D9E75', label:'IN',     full:'Entrance'},
+  entry_exit:   {c:'#EAB308', label:'IN / OUT',full:'Entrance + Exit'},
+  exit_primary: {c:'#E24B4A', label:'OUT',    full:'Primary Exit'},
+};
+function makeGateTypeIcon(g){
+  const st = GATE_TYPE_STYLE[g.type] || GATE_TYPE_STYLE.entry;
+  return L.divIcon({
+    html:`<div style="display:flex;flex-direction:column;align-items:center;line-height:1;">
+            <div style="background:${st.c};color:#111;font-size:9px;font-weight:800;
+                        padding:1px 6px;border-radius:9px;border:1.5px solid #0d0d0d;
+                        box-shadow:0 1px 5px rgba(0,0,0,.6);white-space:nowrap;">${st.label}</div>
+            <div style="width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;
+                        border-top:6px solid ${st.c};margin-top:-1px;filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));"></div>
+          </div>`,
+    className:'', iconSize:[54,22], iconAnchor:[27,22]
+  });
+}
+function gateTypePopup(g){
+  const st = GATE_TYPE_STYLE[g.type] || {};
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:205px;line-height:1.5;">
+    <b style="font-size:13px;">${g.name}</b><br>
+    <span style="color:${st.c};font-weight:700;">${st.full||g.type}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    🏁 Capacity: <b>${g.capacity_pph.toLocaleString()} pph</b> · ${g.lanes||'—'} lanes<br>
+    ${g.notes?`<span style="font-size:10px;color:#666;">${g.notes}</span><br>`:''}
+    <span style="font-size:10px;color:#6366f1;">→ Switch to 🚶 Foot Traffic for live crowd levels</span>
+  </div>`;
+}
+function renderGateTypeMarkers(data){
+  gateTypeLayers.forEach(l=>map.removeLayer(l));
+  gateTypeLayers=[];
+  const gates = data.foot_traffic?.gates || [];
+  gates.forEach(g=>{
+    if(g.lat==null||g.lng==null) return;
+    const m=L.marker([g.lat,g.lng],{icon:makeGateTypeIcon(g),zIndexOffset:450})
+      .addTo(map).bindPopup(gateTypePopup(g));
+    gateTypeLayers.push(m);
+  });
+}
+
+// ── Parking lots & Uber/Ola pickup zones (vehicular view) ──────────────────────
+function makeParkingIcon(p){
+  return L.divIcon({html:`<div style="display:flex;flex-direction:column;align-items:center;line-height:1;">
+     <div style="width:24px;height:24px;border-radius:5px;background:${p.colour};color:#fff;
+                 font-weight:900;font-size:13px;display:flex;align-items:center;justify-content:center;
+                 border:2px solid #0d0d0d;box-shadow:0 1px 5px rgba(0,0,0,.6);">P</div>
+     <div style="background:#0d0d0d;color:${p.colour};font-size:8px;font-weight:800;padding:0 3px;border-radius:3px;margin-top:1px;white-space:nowrap;">${p.fill_pct}%</div>
+   </div>`, className:'', iconSize:[34,33], iconAnchor:[17,16]});
+}
+function makePickupIcon(z){
+  return L.divIcon({html:`<div style="display:flex;flex-direction:column;align-items:center;line-height:1;">
+     <div style="width:26px;height:26px;border-radius:50%;background:${z.colour}33;border:2.5px solid ${z.colour};
+                 font-size:13px;display:flex;align-items:center;justify-content:center;
+                 box-shadow:0 1px 5px rgba(0,0,0,.6);">🚕</div>
+     <div style="background:#0d0d0d;color:${z.colour};font-size:8px;font-weight:800;padding:0 3px;border-radius:3px;margin-top:1px;white-space:nowrap;">${z.load_pct}%</div>
+   </div>`, className:'', iconSize:[34,35], iconAnchor:[17,17]});
+}
+function parkingFacilityPopup(p){
+  const typeLabel={venue_lot:'Venue lot',paid_structure:'Paid parking',overflow_ground:'Overflow ground'}[p.type]||p.type;
+  const priceTxt=p.price>0?`₹${p.price}`:'Free';
+  const sol=(p.solutions||[]).map(s=>`<li style="font-size:10px;color:#444;margin-bottom:2px;">${s}</li>`).join('');
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:215px;line-height:1.5;max-width:270px;">
+    <b style="font-size:13px;">🅿️ ${p.name}</b><br>
+    <span style="color:${p.colour};font-weight:700;">${p.label} · LOS ${p.status}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    🚗 Capacity: <b>${p.capacity.toLocaleString()} cars</b> · ${typeLabel} · ${priceTxt}<br>
+    📊 Fill: <b>${p.fill_pct}%</b>${p.fill_pct>100?' <span style="color:#E24B4A;font-weight:700;">(overflow)</span>':''}<br>
+    🚦 Entry-queue load: <b>${p.access_load_pct}%</b>${p.wait_min>0?` · wait ~${p.wait_min} min`:''}<br>
+    📍 Via ${p.access_road} · ${p.walk_min} min walk to gate
+    ${sol?`<hr style="border:none;border-top:1px solid #ddd;margin:5px 0;"><b style="font-size:10px;">Solutions</b><ul style="padding-left:14px;margin:4px 0;">${sol}</ul>`:''}
+  </div>`;
+}
+function pickupZonePopup(z){
+  const sol=(z.solutions||[]).map(s=>`<li style="font-size:10px;color:#444;margin-bottom:2px;">${s}</li>`).join('');
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:215px;line-height:1.5;max-width:270px;">
+    <b style="font-size:13px;">🚕 ${z.name}</b><br>
+    <span style="color:${z.colour};font-weight:700;">${z.label} · LOS ${z.status}</span>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    📲 Demand: <b>${z.demand_pph.toLocaleString()} ppl/hr</b> vs ${z.capacity_pph.toLocaleString()}/hr capacity<br>
+    📊 Load: <b>${z.load_pct}%</b>${z.wait_min>0?` · cab wait ~${z.wait_min} min`:''}<br>
+    📍 Serves ${z.serves} · via ${z.access_road}
+    ${sol?`<hr style="border:none;border-top:1px solid #ddd;margin:5px 0;"><b style="font-size:10px;">Solutions</b><ul style="padding-left:14px;margin:4px 0;">${sol}</ul>`:''}
+  </div>`;
+}
+function renderParkingPickup(data){
+  parkingLayers.forEach(l=>map.removeLayer(l)); parkingLayers=[];
+  const pp=data.parking_pickup; if(!pp) return;
+  (pp.parking||[]).forEach(p=>{
+    if(p.lat==null||p.lng==null) return;
+    parkingLayers.push(L.marker([p.lat,p.lng],{icon:makeParkingIcon(p),zIndexOffset:350}).addTo(map).bindPopup(parkingFacilityPopup(p)));
+  });
+  (pp.pickup_zones||[]).forEach(z=>{
+    if(z.lat==null||z.lng==null) return;
+    parkingLayers.push(L.marker([z.lat,z.lng],{icon:makePickupIcon(z),zIndexOffset:360}).addTo(map).bindPopup(pickupZonePopup(z)));
+  });
+}
+function updateParkingPanel(data){
+  const box=document.getElementById('ip-parking'); if(!box) return;
+  const pp=data.parking_pickup;
+  if(!pp || (!(pp.parking||[]).length && !(pp.pickup_zones||[]).length)){ box.style.display='none'; return; }
+  const wp=(pp.parking||[]).slice().sort((a,b)=>b.load-a.load)[0];
+  const wz=(pp.pickup_zones||[]).slice().sort((a,b)=>b.load-a.load)[0];
+  let html='';
+  if(wp) html+=`🅿️ Parking <b style="color:${wp.colour}">${wp.fill_pct}%${wp.fill_pct>100?' (overflow)':''}</b> · LOS ${wp.status}${wp.wait_min?` ~${wp.wait_min}m`:''}`;
+  if(wz) html+=`${html?'<br>':''}🚕 Cab pickup <b style="color:${wz.colour}">LOS ${wz.status}</b> ${wz.load_pct}%${wz.wait_min?` · ~${wz.wait_min}m wait`:''}`;
+  box.style.display='block'; box.innerHTML=html;
+}
+
+// ── Event-specific gate layout selector ───────────────────────────────────────
+let _layoutVenue=null;
+function syncLayoutOptions(data){
+  const sel=document.getElementById('layout-select');
+  if(!sel) return;
+  const layouts=data.available_layouts||[{key:'default',label:'Default setup'}];
+  const venue=document.getElementById('venue-select').value;
+  // Rebuild options only when the venue (and thus its layouts) changed
+  if(_layoutVenue!==venue){
+    _layoutVenue=venue;
+    const keep=layouts.some(l=>l.key===sel.value)?sel.value:'default';
+    sel.innerHTML=layouts.map(l=>`<option value="${l.key}">${l.label}</option>`).join('');
+    sel.value=keep;
+  }
+  // Tooltip = description of the active layout
+  const active=layouts.find(l=>l.key===(data.active_layout||sel.value));
+  sel.title=active&&active.desc?active.desc:'Event-specific entry/exit gate setup';
+  // Reflect on the foot panel title
+  const fpv=document.getElementById('fp-venue');
+  if(fpv&&active&&data.foot_traffic) fpv.title=active.label;
+}
+
+// ── Staff Ops: positioned staff stations + role-card panel ─────────────────────
+const STAFF_STYLE = {
+  ticket:   {c:'#f59e0b', e:'🎟'},
+  info:     {c:'#0ea5e9', e:'🛈'},
+  cleaning: {c:'#22c55e', e:'🧹'},
+  firstaid: {c:'#ef4444', e:'➕'},
+  water:    {c:'#38bdf8', e:'💧'},
+};
+function makeStaffIcon(s){
+  const st=STAFF_STYLE[s.type]||{c:'#0d9488',e:'•'};
+  return L.divIcon({html:`<div style="width:26px;height:26px;border-radius:6px;background:${st.c}30;
+     border:2px solid ${st.c};display:flex;align-items:center;justify-content:center;font-size:14px;
+     box-shadow:0 1px 5px rgba(0,0,0,.6);">${s.icon||st.e}</div>`,
+     className:'',iconSize:[26,26],iconAnchor:[13,13]});
+}
+function staffPopup(s){
+  return `<div style="font-family:'Segoe UI',sans-serif;min-width:185px;line-height:1.5;">
+    <b style="font-size:12px;">${s.icon} ${s.label}</b>
+    <hr style="border:none;border-top:1px solid #ddd;margin:5px 0;">
+    <span style="font-size:11px;color:#444;">${s.detail||''}</span></div>`;
+}
+function renderStaffOps(data){
+  staffLayers.forEach(l=>map.removeLayer(l)); staffLayers=[];
+  const so=data.staff_ops; if(!so) return;
+  (so.stations||[]).forEach(s=>{
+    if(s.lat==null||s.lng==null) return;
+    staffLayers.push(L.marker([s.lat,s.lng],{icon:makeStaffIcon(s),zIndexOffset:380})
+      .addTo(map).bindPopup(staffPopup(s)));
+  });
+  updateStaffPanel(data);
+}
+function updateStaffPanel(data){
+  const so=data.staff_ops; if(!so) return;
+  document.getElementById('sp-venue').textContent=`👷 ${data.venue} · Staff & Ops`;
+  document.getElementById('sp-summary').textContent=so.summary||'';
+
+  // Internal crowd-density safety card (Fruin/NDMA thresholds)
+  const idn=data.internal_density, dEl=document.getElementById('sp-density');
+  if(idn && idn.applicable){
+    dEl.innerHTML=`
+      <div style="border:1px solid ${idn.colour};border-left:4px solid ${idn.colour};border-radius:6px;padding:7px 9px;margin:6px 0;">
+        <div style="font-size:11px;font-weight:700;color:${idn.colour};">
+          🫂 Floor density: ${idn.label}
+        </div>
+        <div style="font-size:10px;color:#bbb;margin-top:3px;">
+          ${idn.people_inside.toLocaleString()} inside (${idn.occupancy_pct}% of crowd) ·
+          floor ${idn.floor_area_m2.toLocaleString()} m² ·
+          avg <b>${idn.avg_density}/m²</b> · front-of-stage <b>${idn.front_stage_density}/m²</b>
+        </div>
+        ${(idn.recommendations||[]).map(r=>`<div class="sp-task" style="border-left-color:${idn.colour};">${r}</div>`).join('')}
+        <div style="font-size:8.5px;color:#777;margin-top:3px;">${idn.thresholds}</div>
+      </div>`;
+  }else{
+    dEl.innerHTML=idn&&idn.note?`<div style="font-size:9.5px;color:#888;margin:5px 0;">🫂 ${idn.note}</div>`:'';
+  }
+
+  // Floor-plan micro-congestion hotspots (from uploaded plan)
+  const fpb=data.floorplan;
+  if(fpb&&fpb.active&&(fpb.hotspots||[]).length){
+    const worst=fpb.hotspots.slice(0,8);
+    dEl.innerHTML+=`
+      <div style="border:1px solid #444;border-radius:6px;padding:7px 9px;margin:6px 0;">
+        <div style="font-size:10.5px;font-weight:700;color:#a5b4fc;">📐 Cramped zones (from uploaded plan · ${fpb.confidence||'?'} conf)</div>
+        ${worst.map(h=>`
+          <div style="display:flex;justify-content:space-between;font-size:9.5px;margin-top:3px;">
+            <span style="color:#ccc;">${h.label}</span>
+            <span style="color:${h.colour};font-weight:700;white-space:nowrap;margin-left:6px;">
+              ${h.density}/m² · ${h.worst_phase}</span>
+          </div>`).join('')}
+        ${(fpb.pinch_points||[]).map(p=>`<div class="sp-task" style="border-left-color:#F97316;">⚠ Pinch: ${p}</div>`).join('')}
+      </div>`;
+  }
+  document.getElementById('sp-roles').innerHTML=(so.roles||[]).map(r=>`
+    <div class="sp-role">
+      <div class="sp-role-hd"><span class="sp-role-name">${r.icon} ${r.role}</span>
+        <span class="sp-role-head">${r.headcount}</span></div>
+      <div class="sp-role-detail">${r.detail||''}</div>
+      <div class="sp-time"><b>Deploy</b> ${r.deploy_by} · <b>Peak</b> ${r.peak} · <b>Down</b> ${r.stand_down}</div>
+      ${(r.tasks||[]).map(t=>`<div class="sp-task">${t}</div>`).join('')}
+    </div>`).join('');
+}
+
+// View toggle — Vehicular / Foot Traffic / Staff Ops
+function setView(viewName){
+  currentView=viewName;
+  ['vehicular','foot','staff'].forEach(v=>
+    document.getElementById('btn-'+v).classList.toggle('active', v===viewName));
+
+  document.getElementById('info-panel').style.display = viewName==='vehicular'?'block':'none';
+  document.getElementById('foot-panel').style.display = viewName==='foot'?'block':'none';
+  document.getElementById('staff-panel').style.display= viewName==='staff'?'block':'none';
+  document.getElementById('legend').style.display     = viewName==='vehicular'?'block':'none';
+
+  if(!lastData) return;
+
+  // Clear every overlay, then draw the active view's layers
+  footLayers.forEach(l=>map.removeLayer(l)); footLayers=[];
+  gateTypeLayers.forEach(l=>map.removeLayer(l)); gateTypeLayers=[];
+  parkingLayers.forEach(l=>map.removeLayer(l)); parkingLayers=[];
+  staffLayers.forEach(l=>map.removeLayer(l)); staffLayers=[];
+  const restoreRoads=()=>corridorLayers.forEach(l=>{
+    if(!l.setStyle) return;
+    const w=l.options.weight||2;
+    l.setStyle({opacity:w>=6?0.92:w>=4?0.82:w>=2?0.60:0.38});
+  });
+
+  if(viewName==='foot'){
+    renderFootTraffic(lastData);          // dims roads itself
+  } else if(viewName==='staff'){
+    restoreRoads();
+    renderStaffOps(lastData);
+  } else {
+    restoreRoads();
+    renderGateTypeMarkers(lastData);
+    renderParkingPickup(lastData);
+  }
+}
+
+// ── Date field: default today, wire to auto-refresh ───────────────────────────
+(function(){
+  const el = document.getElementById('event-date');
+  el.value = new Date().toISOString().split('T')[0];
+  el.addEventListener('change', scheduleRefresh);
+})();
+
+// ── Auto-save report ──────────────────────────────────────────────────────────
+let latestReportHTML = null;
+let reportSeq = 0;
+
+function autoSaveReport(data){
+  if(!data) return;
+  reportSeq++;
+  const seq = reportSeq;
+
+  // Monkeypatch window.open so exportReport() writes into latestReportHTML
+  const origOpen = window.open;
+  window.open = function(){
+    return {
+      document:{
+        write(html){ latestReportHTML = html; },
+        close(){}
+      }
+    };
+  };
+  try{ exportReport(); } catch(e){ console.warn('autoSaveReport err', e); }
+  window.open = origOpen;
+
+  // Inject live-closure section into the stored report
+  if(latestReportHTML && data.live_road_closures?.length > 0){
+    const closureRows = data.live_road_closures.map(lc=>
+      `<li style="color:#dc2626;"><b>${lc.road_name}</b> — ${lc.description} <i>(Waze live)</i></li>`
+    ).join('');
+    latestReportHTML = latestReportHTML.replace(
+      '<h2>Active Road Disruptions</h2>',
+      `<h2 style="color:#dc2626;">🚨 Live Road Closures</h2><ul>${closureRows}</ul><h2>Active Road Disruptions</h2>`
+    );
+  }
+
+  // Show banner
+  const now    = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const banner = document.getElementById('report-banner');
+  const nClose = data.live_road_closures?.length||0;
+  const nJams  = data.live_jams_applied||0;
+
+  if(nClose > 0){
+    banner.className = 'live-alert';
+    document.getElementById('report-banner-text').innerHTML =
+      `🚨 <b>${nClose} live road closure${nClose!==1?'s':''}</b> — report #${seq} auto-updated · ${now}`;
+  } else if(nJams > 0){
+    banner.className = '';
+    document.getElementById('report-banner-text').innerHTML =
+      `⚡ Live jams detected — report #${seq} updated · ${now}`;
+  } else {
+    banner.className = '';
+    document.getElementById('report-banner-text').innerHTML =
+      `📋 Report #${seq} auto-generated · ${now}`;
+  }
+  banner.style.display = 'flex';
+}
+
+function openLatestReport(){
+  if(!latestReportHTML){ alert('Run a prediction first.'); return; }
+  const win = window.open('','_blank');
+  win.document.write(latestReportHTML);
+  win.document.close();
+}
+
+function downloadLatestReport(){
+  if(!latestReportHTML){ alert('Run a prediction first.'); return; }
+  const blob = new Blob([latestReportHTML],{type:'text/html'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `traffic-report-${document.getElementById('venue-select').value}-${new Date().toISOString().slice(0,16).replace(':','-')}.html`;
+  a.click();
+}
+
+// ── Live traffic polling (every 90 s) ────────────────────────────────────────
+let _lastAlertTotal = -1;
+
+async function pollLiveTraffic(){
+  const venue = document.getElementById('venue-select').value;
+  try{
+    const r = await fetch(`/api/live-status?venue=${venue}`);
+    if(!r.ok) return;
+    const d = await r.json();
+
+    const total   = d.total||0;
+    const badge   = document.getElementById('live-badge');
+    const updEl   = document.getElementById('live-updated');
+    const now     = new Date().toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'});
+    updEl.textContent = `as of ${now}`;
+
+    if(total > 0){
+      badge.textContent = `⚡ ${d.closures||0} closure${d.closures!==1?'s':''} · ${d.jams||0} jam${d.jams!==1?'s':''}`;
+      badge.className   = 'has-alerts';
+    } else {
+      badge.textContent = '🟢 Live: clear';
+      badge.className   = '';
+    }
+
+    // Auto-refresh prediction when alert count changes
+    if(_lastAlertTotal !== -1 && total !== _lastAlertTotal){
+      console.log(`[Live] Alerts changed ${_lastAlertTotal}→${total} — auto-refreshing`);
+      scheduleRefresh();
+    }
+    _lastAlertTotal = total;
+  }catch(e){/* best-effort */}
+}
+
+function startLivePolling(){
+  pollLiveTraffic();              // immediate
+  setInterval(pollLiveTraffic, 90000); // then every 90 s
+}
+
+// ── Update exportReport to use event-date field ───────────────────────────────
+// (patch: override the evDate resolution so it prefers the new date picker)
+const _origExportReport = exportReport;
+exportReport = function(){
+  // Temporarily set research-date to match event-date so the report picks it up
+  const evDateEl     = document.getElementById('event-date');
+  const resDateEl    = document.getElementById('research-date');
+  const prevResDate  = resDateEl.value;
+  if(evDateEl && evDateEl.value) resDateEl.value = evDateEl.value;
+  _origExportReport();
+  resDateEl.value = prevResDate; // restore
+};
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+updateResaleBadge();
+timeLabel.textContent=minutesLabel(slider.value);
+oocSlider.dispatchEvent(new Event('input'));
+startLivePolling();
+refresh();
+</script>
+</body>
+</html>
