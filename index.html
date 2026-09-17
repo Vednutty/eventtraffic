@@ -1070,9 +1070,11 @@ async function refresh(){
 
     document.getElementById('header-sub').textContent=
       `${data.venue} · ${parseInt(crowd).toLocaleString()} crowd · ${minutesLabel(minutes)} · ${data.los_grade} worst LOS`;
-    const roadCountLabel = usingOSM
+    // all_roads falls back to the named corridors when the OSM fetch fails, so
+    // judge by osm_road_count — otherwise a failure reads as "0 OSM roads".
+    const roadCountLabel = data.osm_road_count > 0
       ? `${data.osm_road_count} OSM roads`
-      : `${data.corridors.length} corridors`;
+      : `${data.corridors.length} main corridors only${data.osm_status && data.osm_status!=='ok' ? ' (road map unavailable — retrying)' : ''}`;
 
     // Live badge
     const liveBadge = document.getElementById('live-badge');

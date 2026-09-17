@@ -1,5 +1,6 @@
-from flask import Flask, jsonify, send_from_directory, request
+from flask import Flask, jsonify, send_from_directory, request, Response
 import base64
+import hmac
 import math
 import json
 import os
@@ -9,22 +10,46 @@ import time
 from datetime import datetime, timedelta
 
 try:
-    from flask_cors import CORS
-    _cors_ok = True
-except ImportError:
-    _cors_ok = False
-
-try:
     import requests as req
     _requests_ok = True
 except ImportError:
     _requests_ok = False
 
+# No CORS: index.html is served by this same app, so every browser call is
+# same-origin. The old CORS(app) let ANY website open in the browser read the
+# API — and fire the paid /api/research call or delete venues/floor plans.
 app = Flask(__name__)
-if _cors_ok:
-    CORS(app)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+
+# ── Access control ────────────────────────────────────────────────────────────
+# Set EVENTTRAFFIC_PASSWORD to require HTTP Basic auth on every request (any
+# username). Unset = open, which is only acceptable on 127.0.0.1.
+APP_PASSWORD = os.environ.get("EVENTTRAFFIC_PASSWORD", "")
+
+
+def _is_cross_site(r):
+    """
+    True if this request was triggered by a page on ANOTHER site (CSRF).
+    Removing CORS stops other sites READING responses, but a browser will still
+    SEND a cross-site <form> POST or <img src=/api/research?...> GET — so the
+    side effect (deleted venue, paid Claude call) happens anyway.
+    """
+    # TODO(human)
+    return False
+
+
+@app.before_request
+def _guard_request():
+    if _is_cross_site(request):
+        return jsonify({"success": False, "error": "cross-site request blocked"}), 403
+    if APP_PASSWORD:
+        auth = request.authorization
+        supplied = (auth.password or "") if auth else ""
+        # compare_digest: constant-time, so the password can't be guessed by timing
+        if not hmac.compare_digest(supplied.encode(), APP_PASSWORD.encode()):
+            return Response("Login required", 401,
+                            {"WWW-Authenticate": 'Basic realm="EventTraffic"'})
 
 # ── Venues ────────────────────────────────────────────────────────────────────
 VENUES = {
@@ -2659,23 +2684,46 @@ def _road_cache_path(venue_id):
     return os.path.join(BASE_DIR, f"roads_cache_{venue_id}.json")
 
 
+_road_refresh_inflight = set()
+_road_refresh_lock     = threading.Lock()
+
+
+def _refresh_road_cache(venue_id):
+    """Background re-fetch of an expired road cache; never blocks a prediction."""
+    try:
+        fetch_osm_roads(venue_id, force_refresh=True)
+    finally:
+        with _road_refresh_lock:
+            _road_refresh_inflight.discard(venue_id)
+
+
 def fetch_osm_roads(venue_id, force_refresh=False):
     """
     Fetch all driveable road geometries within ~1 km of the venue from
     OpenStreetMap via the Overpass API.  Results are cached to disk.
     Returns {"roads": [...], "fetched_at": timestamp} or {"error": ..., "roads": []}.
+
+    An expired cache is still served immediately (roads rarely change) while a
+    background thread refreshes it — an Overpass outage must never blank the map.
     """
     cache_path = _road_cache_path(venue_id)
+    cached = None
+    if os.path.exists(cache_path):
+        try:
+            with open(cache_path, encoding="utf-8") as fh:
+                cached = json.load(fh)
+        except Exception:
+            cached = None   # corrupted cache – re-fetch
 
-    # ── Serve from cache if fresh ─────────────────────────────────────────────
-    if not force_refresh and os.path.exists(cache_path):
+    if cached is not None and not force_refresh:
         age_hrs = (time.time() - os.path.getmtime(cache_path)) / 3600
-        if age_hrs < ROAD_CACHE_TTL_HRS:
-            try:
-                with open(cache_path, encoding="utf-8") as fh:
-                    return json.load(fh)
-            except Exception:
-                pass   # corrupted cache – re-fetch
+        if age_hrs >= ROAD_CACHE_TTL_HRS:
+            with _road_refresh_lock:
+                if venue_id not in _road_refresh_inflight:
+                    _road_refresh_inflight.add(venue_id)
+                    threading.Thread(target=_refresh_road_cache, args=(venue_id,),
+                                     daemon=True).start()
+        return cached
 
     if not _requests_ok:
         return {"error": "requests not installed", "roads": []}
@@ -2684,28 +2732,24 @@ def fetch_osm_roads(venue_id, force_refresh=False):
     lat, lng = venue["lat"], venue["lng"]
 
     # ── Overpass query: all driveable ways in a ~1 km radius ─────────────────
-    query = f"""
-[out:json][timeout:40];
+    elements = _overpass(f"""
 (
   way["highway"]["highway"!~"footway|cycleway|path|steps|pedestrian|track|bridleway"]
      (around:1100,{lat},{lng});
 );
 out geom;
-"""
-
-    try:
-        r = req.post(OVERPASS_URL, data={"data": query}, timeout=45,
-                     headers={"User-Agent": "EventTrafficPlatform/1.0 (mumbai traffic research)"})
-        r.raise_for_status()
-        raw = r.json()
-    except Exception as e:
-        return {"error": str(e), "roads": []}
+""", attempts=2)
+    if elements is None:            # every mirror failed — NOT "no roads here"
+        if cached is not None:
+            return cached           # forced refresh failed: keep the old geometry
+        return {"error": "OpenStreetMap servers unreachable — road map will retry "
+                         "on the next prediction", "roads": []}
 
     # ── Parse elements ────────────────────────────────────────────────────────
     roads = []
     seen_names = {}   # deduplicate long named roads that repeat many small segments
 
-    for elem in raw.get("elements", []):
+    for elem in elements:
         if elem.get("type") != "way":
             continue
         tags     = elem.get("tags", {})
@@ -3960,11 +4004,15 @@ def discover_venue(lat, lng, name_hint="", slug=None, base=None):
     return profile
 
 
-def _venue_profile_path(slug):
+def _safe_slug(slug):
     safe = re.sub(r"[^a-z0-9_]", "", slug.lower())[:40]
     if not safe:
         raise ValueError("bad slug")
-    return os.path.join(BASE_DIR, f"venue_{safe}.json")
+    return safe
+
+
+def _venue_profile_path(slug):
+    return os.path.join(BASE_DIR, f"venue_{_safe_slug(slug)}.json")
 
 
 def register_venue_profile(p):
@@ -4106,9 +4154,10 @@ def list_venues():
 @app.route("/api/venue/<slug>", methods=["DELETE"])
 def venue_delete(slug):
     try:
-        path = _venue_profile_path(slug)
-    except ValueError:
+        slug = _safe_slug(slug)   # same key the file was saved under, so the
+    except ValueError:            # file and the in-memory venue can't diverge
         return jsonify({"success": False, "error": "invalid slug"}), 400
+    path = _venue_profile_path(slug)
     if os.path.exists(path):
         os.remove(path)
         VENUES.pop(slug, None)
@@ -4393,5 +4442,6 @@ if __name__ == "__main__":
     # remote code execution for anyone who can reach the port. Keep host on
     # 127.0.0.1 for development; NEVER expose this publicly. For deployment use:
     #   waitress-serve --port=5000 app:app
-    debug = os.environ.get("FLASK_DEBUG", "1") == "1"
+    # Off by default — opt in for local auto-reload with FLASK_DEBUG=1.
+    debug = os.environ.get("FLASK_DEBUG", "0") == "1"
     app.run(host="127.0.0.1", port=5000, debug=debug)

@@ -3,7 +3,6 @@
 
 # ── Required ─────────────────────────────────────────────────────────────────
 flask>=3.0            # web server + JSON API
-flask-cors>=4.0       # browser access to the API
 requests>=2.31        # OpenStreetMap (Overpass), weather, live traffic feeds
 
 # ── Needed for the AI features ───────────────────────────────────────────────
