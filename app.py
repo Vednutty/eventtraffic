@@ -1076,10 +1076,23 @@ def haversine_km(lat1, lng1, lat2, lng2):
     return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1 - a))
 
 
+RESIDUAL_FLOW_FLOOR = 0.03   # trickle that never fully disappears
+
+
 def get_time_factor(minutes_before, profile="sports"):
+    """
+    Share of peak event car flow at a point in time. Outside the profile table
+    the flow DECAYS (halving each hour) instead of holding the end value: the
+    old flat tail left ~20-25% of peak arrivals on the road hours after the
+    show, which alone kept big-venue roads saturated indefinitely.
+    """
     table = GENRE_PROFILES.get(profile, GENRE_PROFILES["sports"])
-    if minutes_before >= table[0][0]:  return table[0][1]
-    if minutes_before <= table[-1][0]: return table[-1][1]
+    if minutes_before >= table[0][0]:
+        hours_early = (minutes_before - table[0][0]) / 60.0
+        return round(max(RESIDUAL_FLOW_FLOOR, table[0][1] * 0.5 ** hours_early), 4)
+    if minutes_before <= table[-1][0]:
+        hours_late = (table[-1][0] - minutes_before) / 60.0
+        return round(max(RESIDUAL_FLOW_FLOOR, table[-1][1] * 0.5 ** hours_late), 4)
     for i in range(len(table) - 1):
         m1, f1 = table[i]; m2, f2 = table[i + 1]
         if m2 <= minutes_before <= m1:
@@ -2377,25 +2390,62 @@ def compute_staff_ops(venue_id, crowd_size, minutes_before, foot, parking_pickup
             "total_staff": total_staff, "summary": summary}
 
 
+QUEUE_SIM_START_MIN = 300    # start the queue clock 5 h before the event
+QUEUE_SIM_STEP_MIN  = 10
+QUEUE_FULL_DELAY_MIN = 40.0  # queueing delay that scores the term at 1.0
+
+
+def _corridor_demand_vph(crowd_size, transport_split, car_multiplier, road_type,
+                          minutes_before, genre_profile):
+    """Event car flow offered to one road type at a point in time."""
+    num_cars       = (crowd_size * transport_split["car_cab"]) / 2.5
+    effective_cars = num_cars * car_multiplier if road_type == "arterial" else num_cars
+    return ((effective_cars / 1.5) * ROAD_SHARE[road_type] * 1.8
+            * get_time_factor(minutes_before, genre_profile))
+
+
+def _queue_delay_min(crowd_size, transport_split, car_multiplier, road_type,
+                     minutes_before, genre_profile, capacity):
+    """
+    Deterministic queue: step from T-300 to now, carry unserved cars forward.
+
+    Without this, demand above capacity is simply clipped (v/c = 1) and every
+    oversaturated road reads the same 0.94 whether it is 10% or 800% over — so
+    a jam that is still building looks identical to one that is clearing.
+    Returns the delay a car joining the back of the queue now would face.
+    """
+    if capacity <= 0:
+        return 0.0
+    queue = 0.0                                   # vehicles waiting
+    dt_h  = QUEUE_SIM_STEP_MIN / 60.0
+    t     = QUEUE_SIM_START_MIN
+    while t > minutes_before:
+        arrivals = _corridor_demand_vph(crowd_size, transport_split, car_multiplier,
+                                        road_type, t, genre_profile) * dt_h
+        queue = max(0.0, queue + arrivals - capacity * dt_h)
+        t -= QUEUE_SIM_STEP_MIN
+    return (queue / capacity) * 60.0
+
+
 def compute_corridor_eci(corridor, crowd_size, minutes_before, transport_split,
                           car_multiplier, disruptions, capacity_bonus=1.0, genre_profile="sports"):
     road_type  = corridor["road_type"]
     ffs        = FREE_FLOW_SPEEDS[road_type]
     capacity   = ROAD_CAPACITY[road_type] * capacity_bonus
-    road_share = ROAD_SHARE[road_type]
-    tf         = get_time_factor(minutes_before, genre_profile)
 
-    car_fraction  = transport_split["car_cab"]
-    num_cars      = (crowd_size * car_fraction) / 2.5
-    effective_cars = num_cars * car_multiplier if road_type == "arterial" else num_cars
-    vehicles_per_hour = (effective_cars / 1.5) * road_share * 1.8 * tf
+    vehicles_per_hour = _corridor_demand_vph(crowd_size, transport_split, car_multiplier,
+                                             road_type, minutes_before, genre_profile)
 
     v_c_ratio          = min(1.0, vehicles_per_hour / capacity)
     current_speed      = ffs * max(0.05, 1.0 - 0.85 * v_c_ratio)
     speed_ratio_inv    = 1.0 - (current_speed / ffs)
-    delay_ratio        = min(1.0, (ffs / current_speed) - 1.0)
+    queue_delay        = _queue_delay_min(crowd_size, transport_split, car_multiplier,
+                                          road_type, minutes_before, genre_profile, capacity)
+    queue_term         = min(1.0, queue_delay / QUEUE_FULL_DELAY_MIN)
 
-    eci = round(min(1.0, 0.4*speed_ratio_inv + 0.4*v_c_ratio + 0.2*delay_ratio), 4)
+    # Queue term replaces the old instantaneous delay_ratio, which saturated at
+    # the same moment v/c did and pinned every busy road at 0.94.
+    eci = round(min(1.0, 0.35*speed_ratio_inv + 0.35*v_c_ratio + 0.30*queue_term), 4)
 
     disruption_info = None
     for d in disruptions:
@@ -3061,8 +3111,14 @@ def predict():
     # ── Parse event hour and day-of-week for historical learning ──────────────
     try:
         event_hour = int(event_time.split(":")[0])
+        event_minute = int(event_time.split(":")[1])
     except Exception:
-        event_hour = 19
+        event_hour, event_minute = 19, 0
+
+    # Background city traffic belongs to the hour being PREDICTED, not the hour
+    # the event starts — a 19:30 show was reading 7 pm rush-hour background for
+    # its 15:30 and 23:30 predictions alike.
+    bg_hour = ((event_hour * 60 + event_minute - minutes_before) // 60) % 24
 
     event_date_str = request.args.get("event_date", "")
     try:
@@ -3082,7 +3138,7 @@ def predict():
     }
     wf = WEATHER_FACTORS.get(weather, WEATHER_FACTORS["clear"])
 
-    bg_eci = HOURLY_BG_ECI.get(venue_id, HOURLY_BG_ECI["wankhede"])[event_hour % 24]
+    bg_eci = HOURLY_BG_ECI.get(venue_id, HOURLY_BG_ECI["wankhede"])[bg_hour]
     # EVENT-day factor, not background-day factor. Weekend direction depends on
     # the venue's district: DY Patil sits on the Sion-Panvel/Expressway leisure
     # corridor (weekend = Coldplay gridlock), while BKC/Churchgate are business
@@ -3307,7 +3363,7 @@ def predict():
                 osm_data, venue_id, crowd_size, minutes_before,
                 transport_split, car_multiplier, disruptions_active,
                 hist_baseline, capacity_bonus, genre_profile, augmentation,
-                event_hour=event_hour, day_of_week=dow, event_type=event_type,
+                event_hour=bg_hour, day_of_week=dow, event_type=event_type,
                 parking_hotspots=parking_hotspots,
                 dow_factor=dow_factor, crowd_hist_ratio=crowd_hist_ratio,
             )

@@ -114,6 +114,14 @@ Ran the 10 biggest 2023–26 Mumbai events through the live model vs press-docum
 - **Calibration TODOs from this study:** (1) cap special_train car-shift by actual rail capacity share, (2) crowd-weight CORRIDOR_HISTORY like the venue baseline, (3) event-day DOW correction for destination mega-events (weekends worse, not better), (4) staggered-egress mode for festivals (event_type or layout flag).
 - Ground-truth confidence: high for Coldplay/Lolla/Klang (press-verified), medium for cricket/Ed/Diljit, low for Dua Lipa.
 
+## Time-of-day fix (Sep 2026) — predictions were flat across the peak
+The backtest exposed three time bugs in the road model; all three are fixed in app.py.
+1. **ECI saturated at 0.94.** `compute_corridor_eci` clipped v/c at 1.0 and used an instantaneous `delay_ratio` that maxed out at the same moment — so 1.1x and 8x capacity scored identically and a building jam looked like a clearing one. Replaced the delay term with a **deterministic queue** (`_queue_delay_min`): steps from T-300 in 10-min slices, carries unserved cars forward, and scores `min(1, queue_delay/40 min)`. New blend: `0.35*speed_inv + 0.35*v/c + 0.30*queue`.
+2. **Arrival curve never decayed.** `get_time_factor` held the table's end value (0.15–0.25 of peak) forever, which alone kept DY Patil saturated hours after the show. Outside the table the flow now **halves each hour** down to a 0.03 floor (`RESIDUAL_FLOW_FLOOR`).
+3. **Background traffic used the event's start hour** for every phase. Now uses `bg_hour` — the clock hour actually being predicted (event time minus the offset).
+
+**Effect (DY Patil 52.5k):** was 0.949 at every phase incl. +5 h; now 0.906 (T-4h) → peak 0.954 (T-60) → 0.888 (+3 h) → 0.687 (+5 h). Wankhede 33k: B → E at T-30 → B by +3 h. **Backtest scores unchanged** (hotspots 4/6, severity 2/3 exact, 3/3 within one grade) — the fix added time variation without trading away accuracy. Backtest now samples 5 phases (T-120 … T+60) so a peak between samples isn't missed. ⚠ Not tuned to the 3 scored events — deliberately left as is.
+
 ## Verified backtest harness (Sep 2026) — `backtest/`
 **`event_history.json` was largely fabricated** — entries didn't match real events (e.g. "IPL MI vs CSK 2024-03-22" was really 2024-04-14; "Dua Lipa @ Dome 2025-03-15" was really MMRDA 2024-11-30; "Coldplay @ Dome Feb 2024" never happened) and every corridor severity number was unsourced. It is now **generated** from `backtest/verified_events.json` by `build_event_history.py`, and holds only the 3 events with *reported* (not just advised) congestion.
 - `verified_events.json` — 12 real events, every fact with a source URL; `observed.status` = `reported` (scored) or `advisory_only` (police expectation, never scored). Unsourced start times / crowds are flagged.

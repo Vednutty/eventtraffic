@@ -21,7 +21,7 @@ import app                                   # noqa: E402
 import providers                             # noqa: E402
 from bands import BAND_LOS, los_distance     # noqa: E402
 
-PHASES = [(60, "T-60"), (0, "start"), (-30, "T+30")]
+PHASES = [(120, "T-120"), (60, "T-60"), (0, "start"), (-30, "T+30"), (-60, "T+60")]
 # Only used when no sourced crowd exists — always flagged in the report.
 ASSUMED_CROWD = {"mahalaxmi": 32000, "mmrda": 30000, "dome": 6000,
                  "dypatil": 45000, "wankhede": 33000, "nesco": 10000}
