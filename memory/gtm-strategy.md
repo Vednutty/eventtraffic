@@ -7,7 +7,7 @@ metadata:
   originSessionId: 480d5d05-21d1-4ec5-8ea8-de995324b8c3
 ---
 
-User (Meena, durian.in) is commercialising the EventTraffic platform. Direction settled in Jul 2026:
+EventTraffic is a **personal project** — not affiliated with any company (an earlier note wrongly tied it to durian.in; don't infer ownership from the account email). Go-to-market ideas explored in Jul 2026:
 - Business model: sell per-event PDF traffic-management reports (consulting wedge), NOT SaaS yet. Platform stays internal.
 - First customers: event organizers/promoters (BookMyShow Live, District by Zomato, Sunburn/Percept, OML, venue operators like NSCI Dome), because Maharashtra requires a Traffic NOC with parking plan + traffic flow + dispersal arrangements for every big event — the report IS that mandatory document.
 - Government (Mumbai Traffic Police) is cultivated as endorser/channel, not first buyer — procurement too slow.

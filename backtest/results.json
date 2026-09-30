@@ -1,0 +1,438 @@
+[
+ {
+  "id": "coldplay-dypatil-2025-01-18",
+  "name": "Coldplay — Music of the Spheres, Night 1",
+  "venue": "dypatil",
+  "date": "2025-01-18",
+  "crowd": 52500,
+  "crowd_assumed": false,
+  "start_time_unsourced": true,
+  "status": "reported",
+  "predicted": {
+   "T-60": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   },
+   "start": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   },
+   "T+30": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "F",
+  "severity": {
+   "reported_band": "severe",
+   "band_los": "F",
+   "predicted_peak_los": "F",
+   "grades_off": 0
+  },
+  "roads": [
+   {
+    "as_reported": "Sion-Panvel Highway",
+    "reported_delay_min": 60,
+    "reported_queue_km": null,
+    "model": {
+     "eci": 0.936,
+     "los": "F",
+     "jam_km": 5.9,
+     "phase": "T-60",
+     "model_name": "Sion-Panvel Highway"
+    },
+    "hotspot_hit": true,
+    "mappls": null,
+    "mappls_congestion": null
+   },
+   {
+    "as_reported": "Thane-Belapur Road",
+    "reported_delay_min": 60,
+    "reported_queue_km": null,
+    "model": {
+     "eci": 0.9485,
+     "los": "F",
+     "jam_km": null,
+     "phase": "T-60",
+     "model_name": "Thane-Belapur Road"
+    },
+    "hotspot_hit": true,
+    "mappls": null,
+    "mappls_congestion": null
+   },
+   {
+    "as_reported": "Mumbai-Pune Expressway, Turbhe to Kharghar",
+    "reported_delay_min": null,
+    "reported_queue_km": [
+     8,
+     10
+    ],
+    "model": {
+     "eci": 0.936,
+     "los": "F",
+     "jam_km": 5.9,
+     "phase": "T-60",
+     "model_name": "Sion-Panvel Highway"
+    },
+    "hotspot_hit": true,
+    "mappls": null,
+    "mappls_congestion": null
+   }
+  ]
+ },
+ {
+  "id": "coldplay-dypatil-2025-01-19",
+  "name": "Coldplay — Music of the Spheres, Night 2",
+  "venue": "dypatil",
+  "date": "2025-01-19",
+  "crowd": 52500,
+  "crowd_assumed": false,
+  "start_time_unsourced": true,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   },
+   "start": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   },
+   "T+30": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9485
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "F"
+ },
+ {
+  "id": "coldplay-dypatil-2025-01-21",
+  "name": "Coldplay — Music of the Spheres, Night 3",
+  "venue": "dypatil",
+  "date": "2025-01-21",
+  "crowd": 52500,
+  "crowd_assumed": false,
+  "start_time_unsourced": true,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9365
+   },
+   "start": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9365
+   },
+   "T+30": {
+    "los": "F",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.9365
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "F"
+ },
+ {
+  "id": "lollapalooza-mahalaxmi-2025-03-08",
+  "name": "Lollapalooza India 2025 (Mar 8–9)",
+  "venue": "mahalaxmi",
+  "date": "2025-03-08",
+  "crowd": 32000,
+  "crowd_assumed": true,
+  "start_time_unsourced": true,
+  "status": "reported",
+  "predicted": {
+   "T-60": {
+    "los": "D",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.7435
+   },
+   "start": {
+    "los": "D",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.7435
+   },
+   "T+30": {
+    "los": "D",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.7435
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "D",
+  "severity": {
+   "reported_band": "heavy",
+   "band_los": "E",
+   "predicted_peak_los": "D",
+   "grades_off": 1
+  },
+  "roads": [
+   {
+    "as_reported": "Haji Ali to Mahalaxmi Station (KK Road), southbound",
+    "reported_delay_min": null,
+    "reported_queue_km": null,
+    "model": {
+     "eci": 0.7435,
+     "los": "D",
+     "jam_km": null,
+     "phase": "T-60",
+     "model_name": "Keshavrao Khadye Marg"
+    },
+    "hotspot_hit": false,
+    "mappls": null,
+    "mappls_congestion": null
+   },
+   {
+    "as_reported": "Lotus to Haji Ali Junction, southbound",
+    "reported_delay_min": null,
+    "reported_queue_km": null,
+    "model": {
+     "eci": 0.7218,
+     "los": "D",
+     "jam_km": null,
+     "phase": "T-60",
+     "model_name": "Worli — Dr Annie Besant approach"
+    },
+    "hotspot_hit": false,
+    "mappls": null,
+    "mappls_congestion": null
+   }
+  ]
+ },
+ {
+  "id": "edsheeran-mahalaxmi-2024-03-16",
+  "name": "Ed Sheeran — +–=÷× Tour",
+  "venue": "mahalaxmi",
+  "date": "2024-03-16",
+  "crowd": 55000,
+  "crowd_assumed": false,
+  "start_time_unsourced": false,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.8469
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.8469
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.8469
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "E"
+ },
+ {
+  "id": "diljit-mahalaxmi-2024-12-19",
+  "name": "Diljit Dosanjh — Dil-Luminati Tour",
+  "venue": "mahalaxmi",
+  "date": "2024-12-19",
+  "crowd": 32000,
+  "crowd_assumed": true,
+  "start_time_unsourced": true,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Dr E Moses Road",
+    "worst_eci": 0.7657
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Dr E Moses Road",
+    "worst_eci": 0.7657
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Keshavrao Khadye Marg",
+    "worst_eci": 0.7803
+   }
+  },
+  "peak_phase": "T+30",
+  "peak_los": "E"
+ },
+ {
+  "id": "dualipa-mmrda-2024-11-30",
+  "name": "Zomato Feeding India Concert — Dua Lipa",
+  "venue": "mmrda",
+  "date": "2024-11-30",
+  "crowd": 30000,
+  "crowd_assumed": true,
+  "start_time_unsourced": true,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Bandra Kurla Complex Road",
+    "worst_eci": 0.7533
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Bandra Kurla Complex Road",
+    "worst_eci": 0.7533
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Bandra Kurla Complex Road",
+    "worst_eci": 0.7533
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "E"
+ },
+ {
+  "id": "t20wc-parade-wankhede-2024-07-04",
+  "name": "T20 World Cup victory parade + Wankhede felicitation",
+  "venue": "wankhede",
+  "date": "2024-07-04",
+  "crowd": 40000,
+  "crowd_assumed": false,
+  "start_time_unsourced": false,
+  "status": "reported",
+  "predicted": {
+   "T-60": {
+    "los": "F",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.9347
+   },
+   "start": {
+    "los": "F",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.9347
+   },
+   "T+30": {
+    "los": "F",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.9347
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "F",
+  "severity": {
+   "reported_band": "severe",
+   "band_los": "F",
+   "predicted_peak_los": "F",
+   "grades_off": 0
+  },
+  "roads": [
+   {
+    "as_reported": "Marine Drive (NCPA to Wankhede)",
+    "reported_delay_min": null,
+    "reported_queue_km": null,
+    "model": {
+     "eci": 0.9347,
+     "los": "F",
+     "jam_km": null,
+     "phase": "T-60",
+     "model_name": "Marine Drive"
+    },
+    "hotspot_hit": true,
+    "mappls": null,
+    "mappls_congestion": null
+   }
+  ]
+ },
+ {
+  "id": "wc23-semifinal-wankhede-2023-11-15",
+  "name": "ICC World Cup semi-final: India vs New Zealand",
+  "venue": "wankhede",
+  "date": "2023-11-15",
+  "crowd": 33000,
+  "crowd_assumed": false,
+  "start_time_unsourced": false,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Churchgate north",
+    "worst_eci": 0.8138
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Churchgate north",
+    "worst_eci": 0.7635
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Churchgate north",
+    "worst_eci": 0.8217
+   }
+  },
+  "peak_phase": "T+30",
+  "peak_los": "E"
+ },
+ {
+  "id": "ipl24-mi-csk-wankhede-2024-04-14",
+  "name": "IPL 2024 Match 29: MI vs CSK",
+  "venue": "wankhede",
+  "date": "2024-04-14",
+  "crowd": 33000,
+  "crowd_assumed": false,
+  "start_time_unsourced": false,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.8448
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.8448
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Marine Drive",
+    "worst_eci": 0.8448
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "E"
+ },
+ {
+  "id": "wwc25-final-dypatil-2025-11-02",
+  "name": "ICC Women's World Cup final: India vs South Africa",
+  "venue": "dypatil",
+  "date": "2025-11-02",
+  "crowd": 40000,
+  "crowd_assumed": false,
+  "start_time_unsourced": true,
+  "status": "advisory_only",
+  "predicted": {
+   "T-60": {
+    "los": "E",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.8517
+   },
+   "start": {
+    "los": "E",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.8517
+   },
+   "T+30": {
+    "los": "E",
+    "worst_corridor": "Thane-Belapur Road",
+    "worst_eci": 0.8517
+   }
+  },
+  "peak_phase": "T-60",
+  "peak_los": "E"
+ }
+]

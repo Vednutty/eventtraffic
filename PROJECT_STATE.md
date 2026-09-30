@@ -7,10 +7,11 @@ A predictive event-traffic platform for Mumbai venues. Flask backend (`app.py`) 
 
 ## How to run
 ```
-cd C:\Users\ADMIN\Desktop\traffic-platform
-python app.py     # serves http://127.0.0.1:5000
+git clone https://github.com/Vednutty/eventtraffic.git && cd eventtraffic
+pip install -r requirements.txt
+FLASK_DEBUG=1 python app.py     # serves http://127.0.0.1:5000 (Windows: set FLASK_DEBUG=1)
 ```
-Flask debug mode auto-reloads on file changes. If "site can't be reached", the process died — just relaunch in its own terminal window (NOT inside Claude's bash, so closing Claude doesn't kill it).
+Debug mode is off unless `FLASK_DEBUG=1`; with it on, Flask auto-reloads on file changes. Set `EVENTTRAFFIC_PASSWORD` to require a login. If "site can't be reached", the process died — just relaunch in its own terminal window (NOT inside Claude's bash, so closing Claude doesn't kill it).
 
 ## Map accuracy fixes (Jul 2026)
 - **DY Patil centre was ~200 m off.** Stored 19.0433/73.0278; OSM way "Dr. D.Y. Patil Cricket Stadium" centres at **19.04176/73.02674**. The map centred on empty ground NE of the stadium, so the venue looked absent. Corrected — map centre now falls inside the footprint polygon. ⚠ Its gate/parking/pickup coords are absolute and were authored against the old centre; re-verify them against OSM when convenient.
@@ -113,6 +114,15 @@ Ran the 10 biggest 2023–26 Mumbai events through the live model vs press-docum
 - **Calibration TODOs from this study:** (1) cap special_train car-shift by actual rail capacity share, (2) crowd-weight CORRIDOR_HISTORY like the venue baseline, (3) event-day DOW correction for destination mega-events (weekends worse, not better), (4) staggered-egress mode for festivals (event_type or layout flag).
 - Ground-truth confidence: high for Coldplay/Lolla/Klang (press-verified), medium for cricket/Ed/Diljit, low for Dua Lipa.
 
+## Verified backtest harness (Sep 2026) — `backtest/`
+**`event_history.json` was largely fabricated** — entries didn't match real events (e.g. "IPL MI vs CSK 2024-03-22" was really 2024-04-14; "Dua Lipa @ Dome 2025-03-15" was really MMRDA 2024-11-30; "Coldplay @ Dome Feb 2024" never happened) and every corridor severity number was unsourced. It is now **generated** from `backtest/verified_events.json` by `build_event_history.py`, and holds only the 3 events with *reported* (not just advised) congestion.
+- `verified_events.json` — 12 real events, every fact with a source URL; `observed.status` = `reported` (scored) or `advisory_only` (police expectation, never scored). Unsourced start times / crowds are flagged.
+- `run_backtest.py` → `report.md` + `results.json`. Out-of-sample: each event is hidden from history while predicted, Waze live alerts are off (they describe today), disruptions filtered to the event date.
+- `bands.py` — press severity band → LOS grade / severity_score (band sits mid-grade: severe 0.93=F, heavy 0.82=E, moderate 0.68=D, light 0.50=C).
+- `providers.py` — Mappls slot. Public Mappls API = live + typical-day ETAs only; date-specific history must come as an export pasted into `provider_data.mappls`.
+- **First run:** hotspots 4/6, severity exact 2/3 (within one grade 3/3). Coldplay N1 queue 5.9 km vs reported 8–10 km (under). Lolla 2025 predicted D vs reported heavy (crowd assumed — no 2025 figure).
+- **Open issues found:** (1) predicted LOS is identical at T-60 / start / T+30 for every event, and feeder `jam_km` doesn't change by phase — check the phase factor; (2) `CORRIDOR_HISTORY` in app.py still carries numbers "computed from" the old fabricated file (`events: 7` etc.) — rebuild or zero it; (3) the Jul 2026 "10-event backtest" below was calibrated with the old history file in place, so its scores should be re-run with this harness; (4) only 3 of 12 real events have observed road-level reports — date-specific provider data (Mappls export / TomTom history) is the way to grow the scored set.
+
 ## Backtest done — Lollapalooza India 2025 @ Mahalaxmi
 Compared model vs documented reality (Mumbai Traffic Police advisory + ground reports):
 - ✅ Vehicular hotspots: model predicted Sane Guruji Marg, Senapati Bapat, Keshavrao Khadye, Dr E Moses — matches police advisory.
@@ -132,6 +142,8 @@ This is the credibility proof point for sales conversations.
   - Research-panel innerHTML now escapes all LLM/web-derived strings (`esc()`) — XSS guard.
   - `_research_cache` bounded at 200 entries (1h TTL); rate-limit errors surfaced friendly.
   - `app.run` explicitly binds 127.0.0.1; debug gated on `FLASK_DEBUG` env (Werkzeug debugger = RCE if exposed).
+- **Road map outage fix (Sep 2026):** "0 OSM roads" at DY Patil/Dome was an Overpass 504, not missing data. `fetch_osm_roads` (a) now goes through `_overpass()` — 3 mirrors × 2 attempts, `None` = failure — instead of one hard-coded server; (b) serves an EXPIRED cache immediately and refreshes it in a background thread (`_refresh_road_cache`), so an outage never blanks the map and a failed refresh never overwrites good geometry; (c) `roads_cache_*.json` are now committed (removed from `.gitignore`) so a fresh clone works offline. UI label now says "N main corridors only (road map unavailable — retrying)" instead of the misleading "0 OSM roads" (the corridor fallback made `all_roads` non-empty).
+- **Security hardening (Sep 2026):** `FLASK_DEBUG` now defaults to **off**. Open `CORS(app)` removed (UI is same-origin, so it only helped other websites). `before_request` guard blocks cross-site (CSRF) requests and, when `EVENTTRAFFIC_PASSWORD` is set, requires HTTP Basic auth. `venue_delete` now pops the sanitised slug (was deleting the file but leaving the venue loaded when raw ≠ sanitised).
 - **Weather factor added** — `weather=clear|light_rain|heavy_rain` param scales all ECI blends (×1.0/×1.15/×1.35, folded into `dow_factor`) and shifts foot→cab share (+5%/+10%). UI dropdown next to Event Start; auto-filled from research `weather_forecast` keywords. Verified: dome 6k T-30 goes LOS C→D under heavy rain.
 - **Historical baseline improved** — `calculate_historical_baseline` now (a) weights past events by crowd proximity, (b) shrinks toward 0.70 prior by n/(n+3) so 1 lone event doesn't dominate. Legacy 2-arg calls (corridor fallback) unchanged.
 - **Research API** now returns `venue`, `event_type`, `event_date`, `event_time`, `resale_evidence` (told to check Viagogo/StubHub/Twickets/Instagram/OLX and NOT invent resale numbers). Apply button switches venue/type/date/time/weather.
@@ -151,16 +163,17 @@ This is the credibility proof point for sales conversations.
 ## Known stuff to handle next (for selling)
 1. **Hosting** — currently `app.run(debug=True)` on localhost. Will die when laptop closes. Deploy to Render free tier (or DigitalOcean ₹400/mo) with `waitress-serve --port=5000 app:app` for a stable URL.
 2. **Waze "live" feed** is unofficial scraping of `waze.com/live-map/api/georss`. Fine for demo, **not legal for commercial**. Swap to Mappls/MapmyIndia traffic API, TomTom, or HERE before charging customers.
-3. **Authentication** — no login. Add Flask-HTTPBasicAuth (or simple session) before sharing the URL.
+3. **Authentication** — ✅ Basic auth via `EVENTTRAFFIC_PASSWORD` (Sep 2026). Set it on the host before sharing the URL.
 4. **More backtests** — Coldplay @ DY Patil + a Wankhede IPL match → 3-event validation table for pitch.
 5. **Pitch one-pager / pilot proposal** — for event organizers (BookMyShow Live, District by Zomato, Wizcraft) using the PDF report as the deliverable.
 
 ## File layout
-- `app.py` — Flask backend, ~2,600 lines. All the model.
+- `app.py` — Flask backend, ~4,400 lines. All the model.
 - `index.html` — frontend, Leaflet map + 3 views + control panel.
-- `event_history.json` — 18 historical events across the 3 original venues (for similar-event lookup + corridor baselines).
+- `event_history.json` — GENERATED from `backtest/verified_events.json` (3 verified events). Don't hand-edit.
+- `backtest/` — verified ground truth, backtest runner, Mappls provider slot. Run `python3 backtest/run_backtest.py`.
 - `disruptions.json` — active disruption list (road closures, construction).
-- `roads_cache_<venue>.json` — OSM road geometry cache (72h TTL).
+- `roads_cache_<venue>.json` — OSM road geometry cache (72h TTL; committed; expired copy served while a background refresh runs).
 - `PROJECT_STATE.md` — this file.
 
 ## Important code locations
@@ -174,4 +187,4 @@ This is the credibility proof point for sales conversations.
 - `fetch_osm_roads` — Overpass query + disk cache.
 
 ## What to say to start the next session
-> "Pick up the EventTraffic platform at C:\Users\ADMIN\Desktop\traffic-platform. Read PROJECT_STATE.md first. Server runs with `python app.py`. Next thing I want to do is: ___."
+> "Pick up the EventTraffic platform (github.com/Vednutty/eventtraffic). Read PROJECT_STATE.md first. Server runs with `python app.py`. Next thing I want to do is: ___."
